@@ -1,4 +1,4 @@
-import type { Deal } from "@/lib/store/memory";
+import type { Deal } from "@/lib/store";
 
 const categoryIcon: Record<string, string> = { sneakers: "👟", games: "🎮" };
 

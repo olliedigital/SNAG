@@ -1,5 +1,5 @@
 import { checkNow, removeItem } from "@/lib/actions";
-import { db } from "@/lib/store/memory";
+import { getStore, isLiveBackend } from "@/lib/store";
 import { DealCard } from "@/components/DealCard";
 import { SubmitButton } from "@/components/SubmitButton";
 import { WatchlistForm } from "@/components/WatchlistForm";
@@ -7,9 +7,10 @@ import { WatchlistForm } from "@/components/WatchlistForm";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  await db.ensureSeeded();
-  const items = db.items;
-  const deals = db.getDeals();
+  const store = getStore();
+  await store.ensureSeeded();
+  const [items, deals] = await Promise.all([store.getItems(), store.getDeals()]);
+  const live = isLiveBackend();
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -71,8 +72,9 @@ export default async function Page() {
       </section>
 
       <footer className="mt-12 border-t border-neutral-900 pt-4 text-xs text-neutral-600">
-        Demo data — SNAG is running the real watch → match → deal pipeline against two mock “stores”.
-        Live sites (eBay, Best Buy) drop in next.
+        {live
+          ? "Connected to your Supabase database. Showing demo store data until live sites (eBay, Best Buy) are wired in."
+          : "Demo mode — running the real watch → match → deal pipeline against two mock “stores.”"}
       </footer>
     </main>
   );
