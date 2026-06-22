@@ -98,8 +98,8 @@ See `docs/DECISIONS.md`. _API specifics are flagged VERIFY-LIVE in `sources/ebay
 - [x] Offline end-to-end smoke + unit tests
 - [x] Next.js app: watchlist UI + alert cards (mock-backed)
 - [x] Supabase project (`snag`) created + schema applied + security hardened
-- [ ] Wire the app to Supabase (replace the in-memory store)
-- [ ] Deploy to Vercel (live URL)
+- [x] Wire the app to Supabase (env-gated store factory)
+- [x] Deploy to Vercel — live at `snag-eta.vercel.app`, connected to the `snag` database
 - [ ] eBay credentials + live adapter verification
 - [ ] Scheduled watcher wired to the DB
 - [ ] Notifications (email)
