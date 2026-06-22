@@ -94,10 +94,12 @@ See `docs/DECISIONS.md`. _API specifics are flagged VERIFY-LIVE in `sources/ebay
 
 ## Status
 
-- [x] Schema + source-adapter pipeline + good-deal logic (this commit)
+- [x] Schema + source-adapter pipeline + good-deal logic
 - [x] Offline end-to-end smoke + unit tests
-- [ ] Supabase project + apply migration
+- [x] Next.js app: watchlist UI + alert cards (mock-backed)
+- [x] Supabase project (`snag`) created + schema applied + security hardened
+- [ ] Wire the app to Supabase (replace the in-memory store)
+- [ ] Deploy to Vercel (live URL)
 - [ ] eBay credentials + live adapter verification
-- [ ] Next.js app: watchlist UI + alert cards
 - [ ] Scheduled watcher wired to the DB
-- [ ] Notifications (email / Slack)
+- [ ] Notifications (email)
