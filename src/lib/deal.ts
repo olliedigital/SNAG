@@ -3,6 +3,8 @@ import type { DealAssessment, RawListing, WatchlistItem } from "./types";
 export interface DealContext {
   // Lowest current price for the SAME item on OTHER sites this run (cross-site).
   otherSiteLowest?: Record<string, number>;
+  // Median asking price across everything matched this run (below-market rule).
+  marketReference?: number;
   // Recent observed prices for this item (any site) — the interim single-site rule.
   recentPrices?: number[];
   // Tunables.
@@ -15,9 +17,10 @@ const DEFAULT_HISTORY_MIN = 3;
 
 // Decide whether an (already matched) listing is a good deal, and why.
 // Preference order:
-//   1. cross_site — cheapest vs. the same item on other sites right now
-//   2. history    — at/below the recent low when only one site is live
-//   3. max_price  — user set a ceiling and this is at/below it
+//   1. cross_site — cheaper than the same item on other sites right now
+//   2. market     — below the typical asking price across everything matched now
+//   3. history    — at/below the recent low (interim rule, esp. for a single site)
+//   4. max_price  — user set a ceiling and this is at/below it
 export function assessDeal(
   item: WatchlistItem,
   listing: RawListing,
@@ -43,7 +46,23 @@ export function assessDeal(
     }
   }
 
-  // 2. History (interim single-site rule).
+  // 2. Below the current market (median asking price across matched listings).
+  if (typeof ctx.marketReference === "number" && ctx.marketReference > 0) {
+    const reference = ctx.marketReference;
+    const score = (reference - price) / reference;
+    if (score >= pct) {
+      return {
+        isMatch: true,
+        isGoodDeal: true,
+        dealScore: round3(score),
+        referencePrice: reference,
+        basis: "market",
+        reason: `${pct100(score)} below the typical asking price ($${reference.toFixed(2)})`,
+      };
+    }
+  }
+
+  // 3. History (interim single-site rule).
   const hist = (ctx.recentPrices ?? []).filter((p) => Number.isFinite(p) && p > 0);
   if (hist.length >= (ctx.historyWindowMin ?? DEFAULT_HISTORY_MIN)) {
     const low = Math.min(...hist);
@@ -63,7 +82,7 @@ export function assessDeal(
     }
   }
 
-  // 3. Max-price ceiling.
+  // 4. Max-price ceiling.
   if (typeof item.maxPrice === "number" && price <= item.maxPrice) {
     const score = (item.maxPrice - price) / item.maxPrice;
     return {

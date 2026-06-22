@@ -1,4 +1,4 @@
-import { MockSource } from "../sources/mock";
+import { activeSources } from "../sources/active";
 import { runWatch } from "../watch";
 import type { AlertKind, Listing, WatchlistItem } from "../types";
 import type { Deal, NewWatchItem, SnagStore, StoredAlert } from "./store";
@@ -79,11 +79,7 @@ export class MemoryStore implements SnagStore {
   }
 
   async runCheck(): Promise<void> {
-    const sources = [
-      new MockSource("ebay_demo", "eBay (demo)", 1),
-      new MockSource("bestbuy_demo", "Best Buy (demo)", 0.82),
-    ];
-    await runWatch(this.items, sources, this, { goodDealPct: 0.1 });
+    await runWatch(this.items, activeSources(), this, { goodDealPct: 0.1 });
   }
 
   async getDeals(): Promise<Deal[]> {

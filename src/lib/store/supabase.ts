@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { MockSource } from "../sources/mock";
+import { activeSources } from "../sources/active";
 import { runWatch } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
 import type { Deal, NewWatchItem, SnagStore, StoredAlert } from "./store";
@@ -153,11 +153,7 @@ export class SupabaseStore implements SnagStore {
 
   async runCheck(): Promise<void> {
     const items = await this.getItems();
-    const sources = [
-      new MockSource("ebay_demo", "eBay (demo)", 1),
-      new MockSource("bestbuy_demo", "Best Buy (demo)", 0.82),
-    ];
-    await runWatch(items, sources, this, { goodDealPct: 0.1 });
+    await runWatch(items, activeSources(), this, { goodDealPct: 0.1 });
   }
 
   async getDeals(): Promise<Deal[]> {

@@ -29,6 +29,12 @@ describe("assessDeal", () => {
     expect(a.isGoodDeal).toBe(false);
   });
 
+  it("flags a below-market deal from a single source", () => {
+    const a = assessDeal(item, listing(70), { marketReference: 100, goodDealPct: 0.1 });
+    expect(a.isGoodDeal).toBe(true);
+    expect(a.basis).toBe("market");
+  });
+
   it("uses the history rule (new low) when no other sites are present", () => {
     const a = assessDeal(item, listing(50), { recentPrices: [70, 65, 60] });
     expect(a.isGoodDeal).toBe(true);

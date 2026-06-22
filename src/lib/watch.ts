@@ -119,13 +119,20 @@ export async function runWatch(
     }
     const recentPrices = await store.getRecentPrices(item.id, opts.windowDays ?? 14);
 
+    // Median asking price across everything matched this run (below-market rule).
+    const allPrices: number[] = [];
+    for (const kept of perSource.values()) {
+      for (const k of kept) allPrices.push(k.price);
+    }
+    const marketReference = allPrices.length >= 3 ? median(allPrices) : undefined;
+
     // Assess each kept listing and raise an alert for good deals.
     for (const [key, kept] of perSource) {
       const otherSiteLowest: Record<string, number> = {};
       for (const [k, v] of Object.entries(lowestBySource)) {
         if (k !== key) otherSiteLowest[k] = v;
       }
-      const ctx: DealContext = { otherSiteLowest, recentPrices, goodDealPct: opts.goodDealPct };
+      const ctx: DealContext = { otherSiteLowest, recentPrices, marketReference, goodDealPct: opts.goodDealPct };
 
       for (const k of kept) {
         const a = assessDeal(item, k.listing, ctx);
@@ -146,4 +153,10 @@ export async function runWatch(
   }
 
   return summary;
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }

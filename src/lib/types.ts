@@ -3,7 +3,7 @@
 export type Category = "sneakers" | "games";
 export type ConditionPref = "any" | "new" | "used";
 export type AlertKind = "new_match" | "good_deal" | "price_drop";
-export type DealBasis = "cross_site" | "history" | "max_price";
+export type DealBasis = "cross_site" | "history" | "max_price" | "market";
 
 export interface WatchlistItem {
   id: string;
