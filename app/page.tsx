@@ -1,5 +1,6 @@
 import { checkNow, removeItem } from "@/lib/actions";
-import { getStore, isLiveBackend } from "@/lib/store";
+import { getStore } from "@/lib/store";
+import { usingEbay } from "@/lib/sources/active";
 import { DealCard } from "@/components/DealCard";
 import { SubmitButton } from "@/components/SubmitButton";
 import { WatchlistForm } from "@/components/WatchlistForm";
@@ -10,7 +11,7 @@ export default async function Page() {
   const store = getStore();
   await store.ensureSeeded();
   const [items, deals] = await Promise.all([store.getItems(), store.getDeals()]);
-  const live = isLiveBackend();
+  const ebay = usingEbay();
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -72,9 +73,10 @@ export default async function Page() {
       </section>
 
       <footer className="mt-12 border-t border-neutral-900 pt-4 text-xs text-neutral-600">
-        {live
-          ? "Connected to your Supabase database. Showing demo store data until live sites (eBay, Best Buy) are wired in."
-          : "Demo mode — running the real watch → match → deal pipeline against two mock “stores.”"}
+        Live game-deal data via CheapShark (prices across ~30 digital stores).{" "}
+        {ebay
+          ? "eBay connected for sneakers & physical items."
+          : "eBay (sneakers & physical) activates once your developer key is approved."}
       </footer>
     </main>
   );
