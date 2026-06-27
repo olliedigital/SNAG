@@ -7,13 +7,17 @@ import { EbaySource } from "@/lib/sources/ebay";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const id = process.env.EBAY_CLIENT_ID ?? "";
+  const secret = process.env.EBAY_CLIENT_SECRET ?? "";
   const result: Record<string, unknown> = {
     env: {
-      EBAY_CLIENT_ID: process.env.EBAY_CLIENT_ID
-        ? `set (${process.env.EBAY_CLIENT_ID.slice(0, 12)}…)`
+      clientId: id
+        ? { length: id.length, preview: `${id.slice(0, 14)}…${id.slice(-6)}`, hasWhitespace: id !== id.trim() }
         : "MISSING",
-      EBAY_CLIENT_SECRET: process.env.EBAY_CLIENT_SECRET ? "set" : "MISSING",
-      EBAY_MARKETPLACE_ID: process.env.EBAY_MARKETPLACE_ID ?? "(default EBAY_US)",
+      clientSecret: secret
+        ? { length: secret.length, prefix: secret.slice(0, 4), hasWhitespace: secret !== secret.trim() }
+        : "MISSING",
+      marketplace: process.env.EBAY_MARKETPLACE_ID ?? "(default EBAY_US)",
     },
   };
 

@@ -30,7 +30,10 @@ export class EbaySource implements ListingSource {
   ) {}
 
   private async getToken(): Promise<string> {
-    const { clientId, clientSecret } = this;
+    // Trim defensively — a stray space/newline pasted into the env var is a
+    // classic cause of eBay's "invalid_client" auth failure.
+    const clientId = this.clientId?.trim();
+    const clientSecret = this.clientSecret?.trim();
     if (!clientId || !clientSecret) {
       throw new SourceNotConfiguredError(this.key, "set EBAY_CLIENT_ID and EBAY_CLIENT_SECRET");
     }
