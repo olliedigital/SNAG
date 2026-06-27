@@ -112,9 +112,10 @@ function mapItem(it: EbayItemSummary): RawListing {
     currency: it.price?.currency ?? "USD",
     condition: it.condition,
     imageUrl: it.image?.imageUrl,
-    seller: it.seller?.username,
     location: it.itemLocation?.country,
-    raw: it,
+    // Deliberately do NOT persist the seller username or the raw payload — keeps
+    // SNAG within its "no persisted eBay user data" account-deletion exemption.
+    raw: undefined,
   };
 }
 
