@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchListing } from "./match";
+import { ebaySearchQuery, matchListing } from "./match";
 import type { RawListing, WatchlistItem } from "./types";
 
 function item(query: string): WatchlistItem {
@@ -29,5 +29,14 @@ describe("matchListing (strict)", () => {
     expect(matchListing(item("nike minds white size 8"), listing("Nike Minds White Size 10")).isMatch).toBe(false);
     expect(matchListing(item("nike minds white size 8"), listing("Nike Minds White Size 8")).isMatch).toBe(true);
     expect(matchListing(item("nike minds white size 8"), listing("Nike Minds White Sneakers")).isMatch).toBe(true);
+  });
+
+  it("drops replica/bootleg listings", () => {
+    expect(matchListing(item("Jordan 4 Retro Bred"), listing("Jordan 4 Retro Bred REPLICA")).isMatch).toBe(false);
+  });
+
+  it("strips size phrases from the eBay search query", () => {
+    expect(ebaySearchQuery("nike minds womens size 8 white")).toBe("nike minds womens white");
+    expect(ebaySearchQuery("Jordan 4 Retro Bred")).toBe("Jordan 4 Retro Bred");
   });
 });

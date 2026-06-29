@@ -1,4 +1,5 @@
 import type { RawListing, SearchParams } from "../types";
+import { ebaySearchQuery } from "../match";
 import { type ListingSource, SourceNotConfiguredError } from "./source";
 
 // eBay Browse API adapter.
@@ -62,10 +63,10 @@ export class EbaySource implements ListingSource {
   async search(params: SearchParams): Promise<RawListing[]> {
     const token = await this.getToken();
     const url = new URL(BROWSE_URL);
-    url.searchParams.set("q", params.query);
+    url.searchParams.set("q", ebaySearchQuery(params.query));
     url.searchParams.set("limit", String(Math.min(params.limit ?? 25, 50)));
 
-    const filters: string[] = [];
+    const filters: string[] = ["buyingOptions:{FIXED_PRICE}"];
     if (typeof params.maxPrice === "number") {
       filters.push(`price:[..${params.maxPrice}],priceCurrency:USD`);
     }

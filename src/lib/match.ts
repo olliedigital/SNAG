@@ -1,4 +1,4 @@
-import type { RawListing, WatchlistItem } from "./types";
+import type { Category, RawListing, WatchlistItem } from "./types";
 
 export interface MatchResult {
   isMatch: boolean;
@@ -13,6 +13,12 @@ const GENDER: Record<string, string> = {
   kids: "kids", kid: "kids", youth: "kids", boys: "kids", girls: "kids", gs: "kids", ps: "kids", td: "kids",
 };
 const SIZE_WORDS = new Set(["size", "sz", "us"]);
+
+// Junk terms that should never count as a match (per category).
+const CATEGORY_EXCLUDES: Record<Category, string[]> = {
+  sneakers: ["replica", "bootleg", "unauthorized", "counterfeit"],
+  games: [],
+};
 
 interface ParsedQuery {
   keywords: string[]; // every one must appear in the title (whole word)
@@ -36,6 +42,12 @@ export function matchListing(item: WatchlistItem, listing: RawListing): MatchRes
   for (const bad of item.attributes?.mustExclude ?? []) {
     if (titleTokens.has(clean(normalize(bad)))) {
       return { isMatch: false, score: 0, reasons: [`excluded "${bad}"`] };
+    }
+  }
+
+  for (const bad of CATEGORY_EXCLUDES[item.category]) {
+    if (titleTokens.has(bad)) {
+      return { isMatch: false, score: 0, reasons: [`junk term "${bad}"`] };
     }
   }
 
@@ -120,4 +132,16 @@ function titleSizes(titleStr: string): string[] {
   for (const m of titleStr.matchAll(/\b(?:size|sz|us)\s*(\d{1,2}(?:\.\d)?)\b/g)) out.push(m[1]);
   for (const m of titleStr.matchAll(/\b(\d{1,2}(?:\.\d)?)[wm]\b/g)) out.push(m[1]);
   return out;
+}
+
+// The query string to send to eBay's keyword search. Drops size phrases (size
+// usually lives in a listing's variations, not its title) so eBay isn't
+// over-constrained; gender + descriptive words stay, and our matcher still
+// enforces size precisely.
+export function ebaySearchQuery(query: string): string {
+  return query
+    .replace(/\b(?:size|sz|us)\s*\d{1,2}(?:\.\d)?\b/gi, " ")
+    .replace(/\b\d{1,2}(?:\.\d)?[wm]\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
