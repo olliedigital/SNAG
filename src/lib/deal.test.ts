@@ -4,7 +4,7 @@ import type { RawListing, WatchlistItem } from "./types";
 
 const item: WatchlistItem = {
   id: "i1",
-  category: "games",
+  category: "sneakers",
   title: "Test Item",
   query: "test item",
   attributes: {},

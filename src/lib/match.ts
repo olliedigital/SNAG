@@ -17,7 +17,6 @@ const SIZE_WORDS = new Set(["size", "sz", "us"]);
 // Junk terms that should never count as a match (per category).
 const CATEGORY_EXCLUDES: Record<Category, string[]> = {
   sneakers: ["replica", "bootleg", "unauthorized", "counterfeit"],
-  games: [],
 };
 
 interface ParsedQuery {

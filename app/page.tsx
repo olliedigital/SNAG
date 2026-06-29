@@ -21,7 +21,7 @@ export default async function Page() {
             SNAG<span className="text-emerald-400">.</span>
           </h1>
           <p className="text-sm text-neutral-400">
-            Watches for the sneakers and games you want — and flags the good deals.
+            Watches for the sneakers you want — and flags the best deals.
           </p>
         </div>
         <form action={checkNow}>
@@ -37,7 +37,7 @@ export default async function Page() {
             {items.map((it) => (
               <li key={it.id} className="flex items-center justify-between px-4 py-3">
                 <div className="min-w-0">
-                  <span className="mr-2">{it.category === "sneakers" ? "👟" : "🎮"}</span>
+                  <span className="mr-2">👟</span>
                   <span className="font-medium">{it.title}</span>
                   {typeof it.maxPrice === "number" && (
                     <span className="ml-2 text-xs text-neutral-500">under ${it.maxPrice}</span>
@@ -73,10 +73,9 @@ export default async function Page() {
       </section>
 
       <footer className="mt-12 border-t border-neutral-900 pt-4 text-xs text-neutral-600">
-        Live game-deal data via CheapShark (prices across ~30 digital stores).{" "}
         {ebay
-          ? "eBay connected for sneakers & physical items."
-          : "eBay (sneakers & physical) activates once your developer key is approved."}
+          ? "Live sneaker listings from eBay."
+          : "Demo mode — add your eBay developer key to pull live listings."}
       </footer>
     </main>
   );

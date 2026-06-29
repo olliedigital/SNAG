@@ -1,105 +1,76 @@
 # SNAG
 
-**SNAG is a personal agent that watches trusted shopping sites 24/7 for the specific sneakers and games you want, and flags the good deals** — so you decide and buy, without doing the hunting.
+**SNAG is a personal agent that watches eBay for the sneakers you want and flags the genuinely good deals** — so you decide and buy, without doing the hunting.
 
-It's a price/availability **watcher**, not a checkout bot: it surfaces public listings for a human to act on. **No auto-buying in v1.**
+It's a price/availability **watcher**, not a checkout bot: it surfaces public listings for a human to act on. **No auto-buying.**
 
-> The bigger idea: _agents as the primary user_ — software whose main job is for an AI to do work on a human's behalf. Today SNAG reads listing sites for you; the long-term vision is SNAG talking directly to stores' own agents.
-
-## The v1 loop
+## The loop
 
 ```
-add to watchlist  ->  SNAG watches 24/7  ->  finds a match  ->  shows a card  ->  you decide
-                          (scheduled            (matcher +        (price, source,
-                           poll per item)        deal logic)       good-deal signal)
+add a sneaker to your watchlist
+   -> SNAG searches eBay
+   -> strict-matches real listings (brand · model · colourway · gender · size)
+   -> flags the ones priced below market
+   -> shows a deal card  (email alerts coming next)
 ```
 
 ## Architecture
 
-The pipeline is **source-agnostic**: every site is a plug-in behind one
-interface, so adding/swapping a site never touches the matching, deal, or
-scheduling logic.
-
-```
-WatchlistItem ──> [ ListingSource.search() ] ──> RawListing[]
-                       (mock | ebay | …)
-                                │
-                       matchListing()  ── conservative title/attribute match
-                                │
-                       assessDeal()    ── 1) cross-site  2) history  3) max-price
-                                │
-                          alerts ──────> the card the user sees / gets notified about
-```
-
-Modules (`src/lib`):
+Source-agnostic pipeline behind one `ListingSource` interface, so adding a site never touches the matching, deal, or scheduling logic.
 
 | File | Responsibility |
 | --- | --- |
-| `types.ts` | Shared domain types |
-| `sources/source.ts` | `ListingSource` interface + registry |
-| `sources/mock.ts` | Offline fake source (dev/tests) |
-| `sources/ebay.ts` | eBay Browse API adapter (real) |
-| `match.ts` | Does a found listing match a watchlist item? |
-| `deal.ts` | Is it a good deal, and why? |
-| `watch.ts` | The watch loop (depends only on a `Store` interface) |
+| `src/lib/types.ts` | Shared domain types |
+| `src/lib/sources/source.ts` | `ListingSource` interface + registry |
+| `src/lib/sources/ebay.ts` | eBay Browse API adapter (live) |
+| `src/lib/sources/mock.ts` | Offline fake source (dev/tests) |
+| `src/lib/sources/active.ts` | Picks eBay when configured, else mock |
+| `src/lib/match.ts` | Strict matcher: every term + gender + size |
+| `src/lib/deal.ts` | Is it a good deal, and why? |
+| `src/lib/watch.ts` | The watch loop (depends only on a `Store`) |
+| `src/lib/store/*` | Supabase store (live) + in-memory (fallback) |
+| `app/api/cron/watch` | Runs one watch pass — Vercel Cron / pg_cron ready |
 
-## Data model
+## Matching (strict)
 
-Postgres / Supabase — see `supabase/migrations/0001_init.sql`:
-`sources`, `watchlist_items`, `listings`, `price_points`, `alerts`. RLS is
-enabled on every table; v1 runs server-side with the service role and ships
-with no anon policies (added in Phase 1.5 with Supabase Auth).
+A listing matches only if its title contains **every descriptive word** searched
+(brand, model, model number, colourway), plus the **right gender**, plus a
+**compatible size** — e.g. "Jordan 4" never returns a Jordan 13, "womens" never
+returns men's. Replica/bootleg listings are dropped, and eBay results are limited
+to **Buy-It-Now** so auction bids can't masquerade as deals.
 
 ## "Good deal" logic
 
-In preference order:
-
-1. **cross_site** — cheaper than the same item on other watched sites _right now_.
-2. **history** — at/below the recent low (interim rule while only one site is live).
-3. **max_price** — at/below a ceiling the user set.
-
-The threshold (default 10% below reference) is configurable via `SNAG_GOOD_DEAL_PCT`.
+In preference order: **cross-site** → **below current market** (median asking
+price) → **recent-low history** → **max-price ceiling**. Threshold default 10%
+(`SNAG_GOOD_DEAL_PCT`).
 
 ## Stack
 
-- **Backend/DB:** Supabase (Postgres)
-- **App:** Next.js on Vercel _(coming next)_
-- **Watcher:** a trigger-agnostic endpoint (`/api/cron/watch`) callable by Vercel
-  Cron **or** Supabase `pg_cron` — whichever gives the polling frequency we need.
+- **DB:** Supabase (Postgres) — server-side via the service role; RLS on, no public access
+- **App:** Next.js on Vercel
+- **Source:** eBay Browse API (sneakers)
 
 ## Run it
 
 ```bash
 npm install
-npm run pipeline:smoke   # end-to-end run against the mock sources (no network/DB)
-npm run test             # unit tests
+npm run pipeline:smoke   # end-to-end against the mock source (no network/DB)
+npm test                 # unit tests
 npm run typecheck
 ```
 
-## Site choice (v1)
+## Env
 
-- **Anchor: eBay Browse API** — one official, free, OAuth, ToS-clean API covering
-  **both** sneakers and games; large new + used inventory makes the cross-listing
-  price spread meaningful from day one.
-- **Second source (cross-site):** Best Buy (new games) or CheapShark (digital games).
-- **Avoid for v1:** StockX / GOAT (gated / bot-hostile), Amazon PA-API (sales-gated).
-
-See `docs/DECISIONS.md`. _API specifics are flagged VERIFY-LIVE in `sources/ebay.ts`._
-
-## Guardrails
-
-- Show-only — the user always makes the buy decision.
-- Watchlist-driven — no taste-learning yet.
-- Honor each site's ToS; prefer official APIs. No bot-hostile sites in v1.
+See `.env.example`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `EBAY_CLIENT_ID`,
+`EBAY_CLIENT_SECRET`, `CRON_SECRET`, `SNAG_GOOD_DEAL_PCT`.
 
 ## Status
 
-- [x] Schema + source-adapter pipeline + good-deal logic
-- [x] Offline end-to-end smoke + unit tests
-- [x] Next.js app: watchlist UI + alert cards (mock-backed)
-- [x] Supabase project (`snag`) created + schema applied + security hardened
-- [x] Wire the app to Supabase (env-gated store factory)
-- [x] Deploy to Vercel — live at `snag-eta.vercel.app`, connected to the `snag` database
-- [ ] eBay credentials + live adapter verification
-- [ ] Scheduled watcher wired to the DB
-- [ ] Notifications (email)
+- [x] Schema + source-adapter pipeline + strict matcher + good-deal logic
+- [x] Supabase project + schema (RLS, hardened)
+- [x] Next.js app + deployed live on Vercel
+- [x] eBay live (sneakers) — real listings flowing
+- [x] `/api/cron/watch` endpoint (auto-check foundation)
+- [ ] Scheduled 24/7 watching (Vercel Cron / pg_cron)
+- [ ] Email alerts

@@ -173,7 +173,7 @@ export class SupabaseStore implements SnagStore {
   async ensureSeeded(): Promise<void> {
     const { count } = await this.sb.from("watchlist_items").select("id", { count: "exact", head: true });
     if ((count ?? 0) > 0) return;
-    await this.addItem({ title: "Elden Ring (PS5)", category: "games", query: "Elden Ring PS5", maxPrice: 40 });
+    await this.addItem({ title: "Nike Dunk Low Panda", category: "sneakers", query: "Nike Dunk Low Panda" });
     await this.addItem({ title: "Jordan 4 Retro Bred", category: "sneakers", query: "Jordan 4 Retro Bred" });
     await this.runCheck();
   }
@@ -221,7 +221,7 @@ interface AlertRow {
 function mapItem(r: ItemRow): WatchlistItem {
   return {
     id: r.id,
-    category: (r.category as Category) ?? "games",
+    category: (r.category as Category) ?? "sneakers",
     title: r.title,
     query: r.query,
     attributes: (r.attributes ?? {}) as WatchlistItem["attributes"],

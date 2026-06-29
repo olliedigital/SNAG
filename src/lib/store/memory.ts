@@ -95,7 +95,7 @@ export class MemoryStore implements SnagStore {
   async ensureSeeded(): Promise<void> {
     if (this.seeded) return;
     this.seeded = true;
-    await this.addItem({ title: "Elden Ring (PS5)", category: "games", query: "Elden Ring PS5", maxPrice: 40 });
+    await this.addItem({ title: "Nike Dunk Low Panda", category: "sneakers", query: "Nike Dunk Low Panda" });
     await this.addItem({ title: "Jordan 4 Retro Bred", category: "sneakers", query: "Jordan 4 Retro Bred" });
     await this.runCheck();
   }

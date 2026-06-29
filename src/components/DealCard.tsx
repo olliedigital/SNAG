@@ -1,9 +1,7 @@
 import type { Deal } from "@/lib/store";
 
-const categoryIcon: Record<string, string> = { sneakers: "👟", games: "🎮" };
-
 export function DealCard({ deal }: { deal: Deal }) {
-  const { alert, listing, item } = deal;
+  const { alert, listing } = deal;
   const pct = alert.dealScore ? Math.round(alert.dealScore * 100) : null;
 
   return (
@@ -11,7 +9,7 @@ export function DealCard({ deal }: { deal: Deal }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs text-neutral-400">
-            <span>{categoryIcon[item.category] ?? "🔎"}</span>
+            <span>👟</span>
             <span className="truncate capitalize">{listing.sourceKey.replace(/_/g, " ")}</span>
             {listing.condition && (
               <span className="rounded bg-neutral-800 px-1.5 py-0.5 capitalize">{listing.condition}</span>

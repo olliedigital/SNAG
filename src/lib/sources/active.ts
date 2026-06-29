@@ -1,19 +1,20 @@
-import { CheapSharkSource } from "./cheapshark";
 import { EbaySource } from "./ebay";
+import { MockSource } from "./mock";
 import type { ListingSource } from "./source";
 
-// The real sources SNAG queries each run.
-// - CheapShark (free, no key) is always on — real digital game deals.
-// - eBay activates once EBAY_CLIENT_ID/SECRET are set — sneakers + physical items.
+// The real sources SNAG queries. eBay (sneakers) when configured; otherwise two
+// mock "stores" so the app still runs in local/demo mode without credentials.
 export function activeSources(): ListingSource[] {
-  const sources: ListingSource[] = [new CheapSharkSource()];
   if (process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET) {
-    sources.push(new EbaySource());
+    return [new EbaySource()];
   }
-  return sources;
+  return [
+    new MockSource("demo_a", "Demo Store A", 1),
+    new MockSource("demo_b", "Demo Store B", 0.82),
+  ];
 }
 
-// True when the eBay source is configured (sneakers + physical coverage).
+// True when the live eBay source is configured.
 export function usingEbay(): boolean {
   return Boolean(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
 }

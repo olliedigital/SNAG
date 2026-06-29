@@ -1,6 +1,6 @@
 // Core domain types for the SNAG watch -> find -> show pipeline.
 
-export type Category = "sneakers" | "games";
+export type Category = "sneakers";
 export type ConditionPref = "any" | "new" | "used";
 export type AlertKind = "new_match" | "good_deal" | "price_drop";
 export type DealBasis = "cross_site" | "history" | "max_price" | "market";
@@ -22,8 +22,6 @@ export interface ItemAttributes {
   model?: string;
   size?: string; // sneakers (US size, may include "W")
   colorway?: string; // sneakers
-  platform?: string; // games: 'PS5','Switch','Xbox', ...
-  edition?: string; // games: 'Standard','Collector', ...
   mustInclude?: string[]; // tokens that MUST appear in a listing title
   mustExclude?: string[]; // tokens that must NOT appear (e.g. 'replica','case only')
   [key: string]: unknown; // free-form extras (e.g. eBay conditionIds)

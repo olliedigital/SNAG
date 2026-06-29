@@ -45,10 +45,10 @@ class InMemoryStore implements Store {
 const items: WatchlistItem[] = [
   {
     id: "wi-1",
-    category: "games",
-    title: "Elden Ring (PS5)",
-    query: "Elden Ring PS5",
-    attributes: { platform: "PS5" },
+    category: "sneakers",
+    title: "Nike Dunk Low Panda",
+    query: "Nike Dunk Low Panda",
+    attributes: {},
     conditionPref: "any",
     active: true,
   },

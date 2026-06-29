@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: "SNAG — deal hunter",
   description:
-    "SNAG watches for the sneakers and games you want and flags the good deals.",
+    "SNAG watches for the sneakers you want and flags the best deals.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

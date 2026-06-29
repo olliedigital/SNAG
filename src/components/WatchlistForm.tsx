@@ -11,21 +11,13 @@ export function WatchlistForm() {
       className="flex flex-col gap-3 rounded-xl border border-neutral-800 bg-neutral-900 p-4 sm:flex-row sm:items-end"
     >
       <label className="flex flex-1 flex-col gap-1 text-sm">
-        <span className="text-neutral-400">What do you want?</span>
+        <span className="text-neutral-400">What sneaker do you want?</span>
         <input
           name="title"
           required
-          placeholder="e.g. Jordan 4 Retro Bred, size 10"
+          placeholder="e.g. Jordan 4 Retro Bred  ·  Nike Dunk Low Panda  ·  Yeezy 350 Zebra"
           className={inputClass}
         />
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="text-neutral-400">Category</span>
-        <select name="category" className={inputClass} defaultValue="games">
-          <option value="games">Games</option>
-          <option value="sneakers">Sneakers</option>
-        </select>
       </label>
 
       <label className="flex flex-col gap-1 text-sm">
