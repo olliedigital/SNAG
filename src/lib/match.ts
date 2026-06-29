@@ -2,69 +2,122 @@ import type { RawListing, WatchlistItem } from "./types";
 
 export interface MatchResult {
   isMatch: boolean;
-  score: number; // 0..1 confidence
-  reasons: string[]; // why it matched / didn't (for debugging + transparency)
+  score: number;
+  reasons: string[];
 }
 
-// Conservative matcher: a source search is fuzzy, so we re-check each listing
-// against the item's tokens, required/excluded words, and attributes.
-// Bias: prefer a miss over a false match — don't spam the user.
+// Gender word -> canonical gender.
+const GENDER: Record<string, string> = {
+  men: "men", mens: "men", man: "men", male: "men",
+  women: "women", womens: "women", woman: "women", female: "women", wmns: "women",
+  kids: "kids", kid: "kids", youth: "kids", boys: "kids", girls: "kids", gs: "kids", ps: "kids", td: "kids",
+};
+const SIZE_WORDS = new Set(["size", "sz", "us"]);
+
+interface ParsedQuery {
+  keywords: string[]; // every one must appear in the title (whole word)
+  gender?: string;
+  size?: string;
+}
+
+// Strict matcher: a listing matches only if its title contains EVERY descriptive
+// word the user searched for (brand, model, model number, colourway), AND the
+// right gender, AND a compatible size. Honours exactly what was typed — e.g.
+// "Jordan 4" never returns a Jordan 13; "womens" never returns men's.
+//
+// Gender/size are enforced leniently in one direction: a listing is only rejected
+// when its title states a *conflicting* gender/size. Titles that omit them are
+// kept (size often lives in a listing's variations, not its title).
 export function matchListing(item: WatchlistItem, listing: RawListing): MatchResult {
-  const reasons: string[] = [];
-  const hay = normalize(listing.title);
-  const attrs = item.attributes ?? {};
+  const titleTokens = tokenSet(listing.title);
+  const titleStr = normalize(listing.title);
+  const q = parseQuery(item.query);
 
-  // Hard excludes first.
-  for (const bad of attrs.mustExclude ?? []) {
-    if (hay.includes(normalize(bad))) {
-      return { isMatch: false, score: 0, reasons: [`excluded term "${bad}"`] };
+  for (const bad of item.attributes?.mustExclude ?? []) {
+    if (titleTokens.has(clean(normalize(bad)))) {
+      return { isMatch: false, score: 0, reasons: [`excluded "${bad}"`] };
     }
   }
 
-  // Explicit required tokens must all be present.
-  const required = (attrs.mustInclude ?? []).map(normalize);
-  for (const need of required) {
-    if (!hay.includes(need)) {
-      return { isMatch: false, score: 0, reasons: [`missing required "${need}"`] };
+  const missing = q.keywords.filter((k) => !titleTokens.has(k));
+  if (missing.length > 0) {
+    return { isMatch: false, score: 0, reasons: [`missing: ${missing.join(", ")}`] };
+  }
+
+  if (q.gender) {
+    const tg = titleGender(titleTokens);
+    if (tg && tg !== q.gender) {
+      return { isMatch: false, score: 0, reasons: [`gender ${tg} != ${q.gender}`] };
     }
   }
 
-  // Token overlap from the query.
-  const queryTokens = tokenize(item.query);
-  const present = queryTokens.filter((t) => hay.includes(t));
-  const overlap = queryTokens.length ? present.length / queryTokens.length : 0;
-  reasons.push(`${present.length}/${queryTokens.length} query tokens`);
-
-  // Attribute checks (only enforced when the attribute is specified).
-  let attrPenalty = 0;
-  if (isNonEmpty(attrs.platform) && !hay.includes(normalize(attrs.platform))) {
-    attrPenalty += 0.5;
-    reasons.push(`platform "${attrs.platform}" not found`);
-  }
-  if (isNonEmpty(attrs.size) && !sizeMatches(hay, attrs.size)) {
-    attrPenalty += 0.5;
-    reasons.push(`size "${attrs.size}" not found`);
+  if (q.size) {
+    const sizes = titleSizes(titleStr);
+    if (sizes.length > 0 && !sizes.includes(q.size)) {
+      return { isMatch: false, score: 0, reasons: [`size ${q.size} not offered (${sizes.join(", ")})`] };
+    }
   }
 
-  const score = clamp01(overlap - attrPenalty);
-  const isMatch = score >= 0.6;
-  return { isMatch, score, reasons };
+  return { isMatch: true, score: 1, reasons: [`matched all ${q.keywords.length} terms`] };
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+  return s
+    .toLowerCase()
+    .replace(/['’]/g, "") // drop apostrophes so "Women's" -> "womens"
+    .replace(/[^a-z0-9.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
-function tokenize(s: string): string[] {
-  return normalize(s).split(" ").filter((t) => t.length > 1);
+function clean(token: string): string {
+  return token.replace(/^\.+|\.+$/g, "");
 }
-function sizeMatches(hay: string, size: string): boolean {
-  // Match "10", "10.5", "size 10", "us 10", "10w".
-  const s = normalize(size).replace(".", "\\.");
-  return new RegExp(`(^| )(us |size |sz )?${s}( |w|$)`).test(hay);
+function tokenSet(s: string): Set<string> {
+  return new Set(normalize(s).split(" ").map(clean).filter(Boolean));
 }
-function isNonEmpty(v: unknown): v is string {
-  return typeof v === "string" && v.trim().length > 0;
+
+function parseQuery(query: string): ParsedQuery {
+  const tokens = normalize(query).split(" ").map(clean).filter(Boolean);
+  const keywords: string[] = [];
+  let gender: string | undefined;
+  let size: string | undefined;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (GENDER[t]) {
+      gender = GENDER[t];
+      continue;
+    }
+    if (SIZE_WORDS.has(t)) {
+      const next = tokens[i + 1];
+      if (next && isSize(next)) {
+        size = next;
+        i++;
+      }
+      continue;
+    }
+    const width = t.match(/^(\d{1,2}(?:\.\d)?)[wm]$/) ?? t.match(/^[wm](\d{1,2}(?:\.\d)?)$/);
+    if (width) {
+      size = width[1];
+      continue;
+    }
+    keywords.push(t);
+  }
+  return { keywords, gender, size };
 }
-function clamp01(n: number): number {
-  return Math.max(0, Math.min(1, n));
+
+function isSize(t: string): boolean {
+  return /^\d{1,2}(\.\d)?$/.test(t) && Number(t) >= 3 && Number(t) <= 20;
+}
+function titleGender(tokens: Set<string>): string | undefined {
+  for (const [word, g] of Object.entries(GENDER)) {
+    if (tokens.has(word)) return g;
+  }
+  return undefined;
+}
+function titleSizes(titleStr: string): string[] {
+  const out: string[] = [];
+  for (const m of titleStr.matchAll(/\b(?:size|sz|us)\s*(\d{1,2}(?:\.\d)?)\b/g)) out.push(m[1]);
+  for (const m of titleStr.matchAll(/\b(\d{1,2}(?:\.\d)?)[wm]\b/g)) out.push(m[1]);
+  return out;
 }
