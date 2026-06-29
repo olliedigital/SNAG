@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { activeSources } from "../sources/active";
-import { runWatch } from "../watch";
+import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
 import type { Deal, NewWatchItem, SnagStore, StoredAlert } from "./store";
 
@@ -151,9 +151,9 @@ export class SupabaseStore implements SnagStore {
     return ((data ?? []) as ItemRow[]).map(mapItem);
   }
 
-  async runCheck(): Promise<void> {
+  async runCheck(): Promise<WatchSummary> {
     const items = await this.getItems();
-    await runWatch(items, activeSources(), this, { goodDealPct: 0.1 });
+    return runWatch(items, activeSources(), this, { goodDealPct: 0.1 });
   }
 
   async getDeals(): Promise<Deal[]> {

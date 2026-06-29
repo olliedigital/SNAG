@@ -1,4 +1,4 @@
-import type { Store } from "../watch";
+import type { Store, WatchSummary } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
 
 export interface StoredAlert {
@@ -34,6 +34,6 @@ export interface SnagStore extends Store {
   removeItem(id: string): Promise<void>;
   getItems(): Promise<WatchlistItem[]>;
   getDeals(): Promise<Deal[]>;
-  runCheck(): Promise<void>;
+  runCheck(): Promise<WatchSummary>;
   ensureSeeded(): Promise<void>;
 }

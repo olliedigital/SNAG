@@ -1,5 +1,5 @@
 import { activeSources } from "../sources/active";
-import { runWatch } from "../watch";
+import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Listing, WatchlistItem } from "../types";
 import type { Deal, NewWatchItem, SnagStore, StoredAlert } from "./store";
 
@@ -78,8 +78,8 @@ export class MemoryStore implements SnagStore {
     return this.items;
   }
 
-  async runCheck(): Promise<void> {
-    await runWatch(this.items, activeSources(), this, { goodDealPct: 0.1 });
+  async runCheck(): Promise<WatchSummary> {
+    return runWatch(this.items, activeSources(), this, { goodDealPct: 0.1 });
   }
 
   async getDeals(): Promise<Deal[]> {
