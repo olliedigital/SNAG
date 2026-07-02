@@ -79,7 +79,7 @@ export class MemoryStore implements SnagStore {
   }
 
   async runCheck(): Promise<WatchSummary> {
-    return runWatch(this.items, activeSources(), this, { goodDealPct: 0.1 });
+    return runWatch(this.items, activeSources(), this, { goodDealPct: 0.1, limitPerSource: 100 });
   }
 
   async getDeals(): Promise<Deal[]> {

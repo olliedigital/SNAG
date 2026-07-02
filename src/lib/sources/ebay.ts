@@ -64,7 +64,7 @@ export class EbaySource implements ListingSource {
     const token = await this.getToken();
     const url = new URL(BROWSE_URL);
     url.searchParams.set("q", ebaySearchQuery(params.query));
-    url.searchParams.set("limit", String(Math.min(params.limit ?? 25, 50)));
+    url.searchParams.set("limit", String(Math.min(params.limit ?? 100, 200)));
 
     const filters: string[] = ["buyingOptions:{FIXED_PRICE}"];
     if (typeof params.maxPrice === "number") {

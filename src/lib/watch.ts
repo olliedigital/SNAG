@@ -83,24 +83,28 @@ export async function runWatch(
         });
         summary.listingsSeen += raws.length;
 
-        const kept: KeptListing[] = [];
-        for (const raw of raws) {
-          if (!Number.isFinite(raw.price) || raw.price <= 0) continue;
-          if (!matchListing(item, raw).isMatch) continue;
-          summary.matches++;
+        const candidates = raws.filter(
+          (raw) => Number.isFinite(raw.price) && raw.price > 0 && matchListing(item, raw).isMatch,
+        );
+        summary.matches += candidates.length;
 
-          const listing: Listing = { ...raw, watchlistItemId: item.id, sourceKey: source.key };
-          const { id, isNew } = await store.upsertListing(listing);
-          if (isNew) summary.newListings++;
-          await store.recordPricePoint({
-            watchlistItemId: item.id,
-            sourceKey: source.key,
-            listingId: id,
-            price: raw.price,
-            currency: raw.currency,
-          });
-          kept.push({ listingId: id, price: raw.price, listing: { ...listing, id }, isNew });
-        }
+        // Persist concurrently — at ~100 listings per source, sequential
+        // round-trips would blow the serverless time budget.
+        const kept = await Promise.all(
+          candidates.map(async (raw): Promise<KeptListing> => {
+            const listing: Listing = { ...raw, watchlistItemId: item.id, sourceKey: source.key };
+            const { id, isNew } = await store.upsertListing(listing);
+            await store.recordPricePoint({
+              watchlistItemId: item.id,
+              sourceKey: source.key,
+              listingId: id,
+              price: raw.price,
+              currency: raw.currency,
+            });
+            return { listingId: id, price: raw.price, listing: { ...listing, id }, isNew };
+          }),
+        );
+        for (const k of kept) if (k.isNew) summary.newListings++;
         perSource.set(source.key, kept);
       } catch (err) {
         summary.errors.push({

@@ -153,7 +153,7 @@ export class SupabaseStore implements SnagStore {
 
   async runCheck(): Promise<WatchSummary> {
     const items = await this.getItems();
-    return runWatch(items, activeSources(), this, { goodDealPct: 0.1 });
+    return runWatch(items, activeSources(), this, { goodDealPct: 0.1, limitPerSource: 100 });
   }
 
   async getDeals(): Promise<Deal[]> {
