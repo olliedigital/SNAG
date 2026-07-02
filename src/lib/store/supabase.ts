@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { judgeListings } from "../judge";
+import type { PendingAlert } from "../notify";
 import { activeSources } from "../sources/active";
 import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
@@ -175,6 +176,39 @@ export class SupabaseStore implements SnagStore {
     return deals;
   }
 
+  async getPendingAlerts(): Promise<PendingAlert[]> {
+    const { data } = await this.sb
+      .from("alerts")
+      .select("id, reason, deal_score, listing:listings(title,url,price,condition), item:watchlist_items(title)")
+      .eq("status", "pending")
+      .order("deal_score", { ascending: false, nullsFirst: false })
+      .limit(20);
+
+    const out: PendingAlert[] = [];
+    for (const row of (data ?? []) as unknown as PendingAlertRow[]) {
+      if (!row.listing || !row.item) continue;
+      out.push({
+        id: row.id,
+        itemTitle: row.item.title,
+        listingTitle: row.listing.title,
+        url: row.listing.url,
+        price: Number(row.listing.price),
+        condition: row.listing.condition ?? undefined,
+        reason: row.reason,
+        dealScore: row.deal_score != null ? Number(row.deal_score) : undefined,
+      });
+    }
+    return out;
+  }
+
+  async markAlertsSent(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.sb
+      .from("alerts")
+      .update({ status: "sent", notified_at: new Date().toISOString() })
+      .in("id", ids);
+  }
+
   async ensureSeeded(): Promise<void> {
     const { count } = await this.sb.from("watchlist_items").select("id", { count: "exact", head: true });
     if ((count ?? 0) > 0) return;
@@ -209,6 +243,14 @@ interface ListingRow {
   location?: string | null;
   source?: { key?: string | null; name?: string | null } | null;
 }
+interface PendingAlertRow {
+  id: string;
+  reason: string;
+  deal_score?: number | string | null;
+  listing?: { title: string; url: string; price: number | string; condition?: string | null } | null;
+  item?: { title: string } | null;
+}
+
 interface AlertRow {
   id: string;
   watchlist_item_id: string;

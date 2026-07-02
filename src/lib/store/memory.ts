@@ -97,6 +97,12 @@ export class MemoryStore implements SnagStore {
     return deals.sort((a, b) => (b.alert.dealScore ?? 0) - (a.alert.dealScore ?? 0));
   }
 
+  async getPendingAlerts() {
+    return []; // demo mode doesn't email
+  }
+
+  async markAlertsSent(): Promise<void> {}
+
   async ensureSeeded(): Promise<void> {
     if (this.seeded) return;
     this.seeded = true;

@@ -1,3 +1,4 @@
+import type { PendingAlert } from "../notify";
 import type { Store, WatchSummary } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
 
@@ -36,4 +37,7 @@ export interface SnagStore extends Store {
   getDeals(): Promise<Deal[]>;
   runCheck(): Promise<WatchSummary>;
   ensureSeeded(): Promise<void>;
+  // Email-alert queue: alerts not yet notified, and marking them sent.
+  getPendingAlerts(): Promise<PendingAlert[]>;
+  markAlertsSent(ids: string[]): Promise<void>;
 }
