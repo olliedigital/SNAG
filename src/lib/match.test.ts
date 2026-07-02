@@ -35,6 +35,13 @@ describe("matchListing (strict)", () => {
     expect(matchListing(item("Jordan 4 Retro Bred"), listing("Jordan 4 Retro Bred REPLICA")).isMatch).toBe(false);
   });
 
+  it("drops not-a-pair and junk listings", () => {
+    expect(matchListing(item("Jordan 4 Retro Bred"), listing("!RIGHT SHOE ONLY! Jordan 4 Retro Bred Size 8.5")).isMatch).toBe(false);
+    expect(matchListing(item("Jordan 4 Retro Bred"), listing("Jordan 4 Retro Bred Shoe Box Only")).isMatch).toBe(false);
+    expect(matchListing(item("Jordan 4 Retro Bred"), listing("Jordan 4 Retro Bred Sneaker Keychain")).isMatch).toBe(false);
+    expect(matchListing(item("Jordan 4 Retro Bred"), listing("Jordan 4 Retro Bred 2019 With Original Box")).isMatch).toBe(true);
+  });
+
   it("strips size phrases from the eBay search query", () => {
     expect(ebaySearchQuery("nike minds womens size 8 white")).toBe("nike minds womens white");
     expect(ebaySearchQuery("Jordan 4 Retro Bred")).toBe("Jordan 4 Retro Bred");

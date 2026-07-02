@@ -19,6 +19,23 @@ const CATEGORY_EXCLUDES: Record<Category, string[]> = {
   sneakers: ["replica", "bootleg", "unauthorized", "counterfeit"],
 };
 
+// Junk PHRASES (matched against the normalized title, so punctuation/case don't
+// matter): not-a-pair listings, empty boxes, trinkets, broken items.
+const CATEGORY_EXCLUDE_PHRASES: Record<Category, string[]> = {
+  sneakers: [
+    "right shoe only",
+    "left shoe only",
+    "right foot only",
+    "left foot only",
+    "single shoe",
+    "one shoe only",
+    "box only",
+    "empty box",
+    "for parts",
+    "keychain",
+  ],
+};
+
 interface ParsedQuery {
   keywords: string[]; // every one must appear in the title (whole word)
   gender?: string;
@@ -47,6 +64,12 @@ export function matchListing(item: WatchlistItem, listing: RawListing): MatchRes
   for (const bad of CATEGORY_EXCLUDES[item.category]) {
     if (titleTokens.has(bad)) {
       return { isMatch: false, score: 0, reasons: [`junk term "${bad}"`] };
+    }
+  }
+
+  for (const phrase of CATEGORY_EXCLUDE_PHRASES[item.category]) {
+    if (titleStr.includes(phrase)) {
+      return { isMatch: false, score: 0, reasons: [`junk listing "${phrase}"`] };
     }
   }
 
