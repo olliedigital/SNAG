@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { judgeListings } from "../judge";
 import { activeSources } from "../sources/active";
 import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
@@ -153,7 +154,11 @@ export class SupabaseStore implements SnagStore {
 
   async runCheck(): Promise<WatchSummary> {
     const items = await this.getItems();
-    return runWatch(items, activeSources(), this, { goodDealPct: 0.1, limitPerSource: 100 });
+    return runWatch(items, activeSources(), this, {
+      goodDealPct: 0.1,
+      limitPerSource: 100,
+      judge: judgeListings,
+    });
   }
 
   async getDeals(): Promise<Deal[]> {

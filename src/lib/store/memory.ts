@@ -1,3 +1,4 @@
+import { judgeListings } from "../judge";
 import { activeSources } from "../sources/active";
 import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Listing, WatchlistItem } from "../types";
@@ -79,7 +80,11 @@ export class MemoryStore implements SnagStore {
   }
 
   async runCheck(): Promise<WatchSummary> {
-    return runWatch(this.items, activeSources(), this, { goodDealPct: 0.1, limitPerSource: 100 });
+    return runWatch(this.items, activeSources(), this, {
+      goodDealPct: 0.1,
+      limitPerSource: 100,
+      judge: judgeListings,
+    });
   }
 
   async getDeals(): Promise<Deal[]> {

@@ -1,4 +1,5 @@
 import { assessDeal, type DealContext } from "./deal";
+import type { ListingJudge } from "./judge";
 import { matchListing } from "./match";
 import type { ListingSource } from "./sources/source";
 import type { AlertKind, Listing, WatchlistItem } from "./types";
@@ -30,6 +31,9 @@ export interface WatchOptions {
   windowDays?: number;
   goodDealPct?: number;
   limitPerSource?: number;
+  // Optional AI second-opinion on strict-matched titles. Fail-open: when it
+  // errors (returns null), strict-match results are kept unchanged.
+  judge?: ListingJudge;
 }
 
 export interface WatchSummary {
@@ -37,7 +41,9 @@ export interface WatchSummary {
   listingsSeen: number;
   newListings: number;
   matches: number;
+  aiRejected: number;
   alertsCreated: number;
+  judgeError?: string;
   errors: { item: string; source: string; message: string }[];
 }
 
@@ -60,6 +66,7 @@ export async function runWatch(
     listingsSeen: 0,
     newListings: 0,
     matches: 0,
+    aiRejected: 0,
     alertsCreated: 0,
     errors: [],
   };
@@ -83,9 +90,21 @@ export async function runWatch(
         });
         summary.listingsSeen += raws.length;
 
-        const candidates = raws.filter(
+        let candidates = raws.filter(
           (raw) => Number.isFinite(raw.price) && raw.price > 0 && matchListing(item, raw).isMatch,
         );
+
+        // AI second opinion on the survivors (fail-open on judge errors).
+        if (opts.judge && candidates.length > 0) {
+          const verdict = await opts.judge(item, candidates.map((c) => c.title));
+          if (verdict) {
+            const before = candidates.length;
+            candidates = candidates.filter((_, i) => verdict.has(i));
+            summary.aiRejected += before - candidates.length;
+          } else {
+            summary.judgeError = "AI judge unavailable — kept all strict-match results";
+          }
+        }
         summary.matches += candidates.length;
 
         // Persist concurrently — at ~100 listings per source, sequential
