@@ -48,7 +48,9 @@ export async function sendDealAlerts(pending: PendingAlert[]): Promise<boolean> 
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "SNAG <onboarding@resend.dev>",
+        // Default test sender delivers only to the Resend account's own email;
+        // set SNAG_EMAIL_FROM to an address on a verified domain to send anywhere.
+        from: process.env.SNAG_EMAIL_FROM?.trim() || "SNAG <onboarding@resend.dev>",
         to: [to],
         subject: `SNAG: ${pending.length} new deal${pending.length > 1 ? "s" : ""} found 👟`,
         html,
