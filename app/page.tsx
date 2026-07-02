@@ -1,6 +1,6 @@
 import { checkNow, removeItem } from "@/lib/actions";
 import { getStore } from "@/lib/store";
-import { usingEbay } from "@/lib/sources/active";
+import { usingEbay, usingScout } from "@/lib/sources/active";
 import { DealCard } from "@/components/DealCard";
 import { SubmitButton } from "@/components/SubmitButton";
 import { WatchlistForm } from "@/components/WatchlistForm";
@@ -74,7 +74,7 @@ export default async function Page() {
 
       <footer className="mt-12 border-t border-neutral-900 pt-4 text-xs text-neutral-600">
         {ebay
-          ? "Live sneaker listings from eBay."
+          ? `Live sneaker listings from eBay${usingScout() ? " + web-wide price scout (StockX, GOAT, Amazon & more via the shopping index)" : ""}. AI-verified matches.`
           : "Demo mode — add your eBay developer key to pull live listings."}
       </footer>
     </main>
