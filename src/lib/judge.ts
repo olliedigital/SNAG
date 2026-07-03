@@ -28,6 +28,7 @@ export const judgeListings: ListingJudge = async (item, titles) => {
         ``,
         `Return ONLY a JSON array of the numbers whose listing is genuinely a PAIR of the exact model and colourway the user wants.`,
         `Exclude: different colourways or model numbers (even when the title name-drops the wanted words), single shoes, empty boxes, accessories, keychains, replicas, customs.`,
+        `Some titles end with "— StoreName". Exclude listings from content/affiliate aggregators or stores that don't actually sell sneakers (e.g. Lyst, Editorialist, ShopStyle, homeware shops); keep real sneaker retailers and marketplaces (StockX, GOAT, eBay, Foot Locker, Poshmark, etc.).`,
         `If you are unsure about a listing, exclude it.`,
       ].join("\n"),
     });

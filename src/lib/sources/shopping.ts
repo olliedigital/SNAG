@@ -37,7 +37,9 @@ export class ShoppingScoutSource implements ListingSource {
         return {
           sourceListingId: r.productId ?? r.link,
           title: r.source ? `${r.title} — ${r.source}` : r.title,
-          url: r.link,
+          // Serper's link is a Google Shopping page; send the user to the actual
+          // store's own search for this product instead whenever we know it.
+          url: storeSearchUrl(r.source, r.title, r.link),
           price,
           currency: "USD",
           imageUrl: r.imageUrl,
@@ -58,6 +60,31 @@ interface SerperShoppingResponse {
     imageUrl?: string;
     productId?: string;
   }[];
+}
+
+// On-site search URLs for the stores we recognise. Landing on the store's own
+// search for the exact product beats bouncing through Google Shopping.
+const STORE_SEARCH: [needle: string, build: (q: string) => string][] = [
+  ["stockx", (q) => `https://stockx.com/search?s=${q}`],
+  ["goat", (q) => `https://www.goat.com/search?query=${q}`],
+  ["flight club", (q) => `https://www.flightclub.com/catalogsearch/result?q=${q}`],
+  ["stadium goods", (q) => `https://www.stadiumgoods.com/en-us/search?keyword=${q}`],
+  ["ebay", (q) => `https://www.ebay.com/sch/i.html?_nkw=${q}`],
+  ["amazon", (q) => `https://www.amazon.com/s?k=${q}`],
+  ["walmart", (q) => `https://www.walmart.com/search?q=${q}`],
+  ["foot locker", (q) => `https://www.footlocker.com/search?query=${q}`],
+  ["poshmark", (q) => `https://poshmark.com/search?query=${q}`],
+  ["nike", (q) => `https://www.nike.com/w?q=${q}`],
+];
+
+export function storeSearchUrl(source: string | undefined, title: string, fallback: string): string {
+  if (!source) return fallback;
+  const store = source.toLowerCase();
+  const q = encodeURIComponent(title);
+  for (const [needle, build] of STORE_SEARCH) {
+    if (store.includes(needle)) return build(q);
+  }
+  return fallback;
 }
 
 export function parsePrice(p: unknown): number {
