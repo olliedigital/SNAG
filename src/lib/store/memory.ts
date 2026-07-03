@@ -2,7 +2,15 @@ import { judgeListings } from "../judge";
 import { activeSources } from "../sources/active";
 import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Listing, WatchlistItem } from "../types";
-import { computePriceStats, type Deal, type NewWatchItem, type PriceStats, type SnagStore, type StoredAlert } from "./store";
+import {
+  computePriceStats,
+  type Deal,
+  type MarketOffer,
+  type NewWatchItem,
+  type PriceStats,
+  type SnagStore,
+  type StoredAlert,
+} from "./store";
 
 // In-memory demo backend. Implements SnagStore so the app can run with zero
 // configuration. State lives in the server process and resets on restart — used
@@ -107,6 +115,21 @@ export class MemoryStore implements SnagStore {
       (byItem[l.watchlistItemId] ??= []).push(l.price);
     }
     return computePriceStats(byItem);
+  }
+
+  async getMarketSnapshot(): Promise<Record<string, MarketOffer[]>> {
+    const best: Record<string, Map<string, MarketOffer>> = {};
+    for (const l of this.listings.values()) {
+      const store = l.seller ?? (l.sourceKey === "ebay" ? "eBay" : l.sourceKey);
+      const byStore = (best[l.watchlistItemId] ??= new Map());
+      const prev = byStore.get(store);
+      if (!prev || l.price < prev.price) byStore.set(store, { store, price: l.price, url: l.url });
+    }
+    const out: Record<string, MarketOffer[]> = {};
+    for (const [itemId, byStore] of Object.entries(best)) {
+      out[itemId] = [...byStore.values()].sort((a, b) => a.price - b.price).slice(0, 8);
+    }
+    return out;
   }
 
   async markAlertsSent(): Promise<void> {}

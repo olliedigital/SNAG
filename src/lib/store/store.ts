@@ -42,6 +42,14 @@ export interface SnagStore extends Store {
   markAlertsSent(ids: string[]): Promise<void>;
   // Current price spread per watchlist item (drives the market-position bar).
   getItemPriceStats(): Promise<Record<string, PriceStats>>;
+  // Lowest tracked price per store per item (drives the across-the-market strip).
+  getMarketSnapshot(): Promise<Record<string, MarketOffer[]>>;
+}
+
+export interface MarketOffer {
+  store: string;
+  price: number;
+  url: string;
 }
 
 export interface PriceStats {

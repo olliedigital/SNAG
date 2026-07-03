@@ -4,7 +4,15 @@ import type { PendingAlert } from "../notify";
 import { activeSources } from "../sources/active";
 import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
-import { computePriceStats, type Deal, type NewWatchItem, type PriceStats, type SnagStore, type StoredAlert } from "./store";
+import {
+  computePriceStats,
+  type Deal,
+  type MarketOffer,
+  type NewWatchItem,
+  type PriceStats,
+  type SnagStore,
+  type StoredAlert,
+} from "./store";
 
 // Supabase-backed store. Server-side only: it uses the service role key, which
 // bypasses RLS, so the database stays fully locked to the public.
@@ -210,6 +218,26 @@ export class SupabaseStore implements SnagStore {
     return computePriceStats(byItem);
   }
 
+  async getMarketSnapshot(): Promise<Record<string, MarketOffer[]>> {
+    const { data } = await this.sb
+      .from("listings")
+      .select("watchlist_item_id, seller, price, url, source:sources(key)");
+    const best: Record<string, Map<string, MarketOffer>> = {};
+    for (const row of (data ?? []) as unknown as MarketRow[]) {
+      const price = Number(row.price);
+      if (!Number.isFinite(price) || price <= 0) continue;
+      const store = row.seller ?? (row.source?.key === "ebay" ? "eBay" : (row.source?.key ?? "web"));
+      const byStore = (best[row.watchlist_item_id] ??= new Map());
+      const prev = byStore.get(store);
+      if (!prev || price < prev.price) byStore.set(store, { store, price, url: row.url });
+    }
+    const out: Record<string, MarketOffer[]> = {};
+    for (const [itemId, byStore] of Object.entries(best)) {
+      out[itemId] = [...byStore.values()].sort((a, b) => a.price - b.price).slice(0, 8);
+    }
+    return out;
+  }
+
   async markAlertsSent(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     await this.sb
@@ -252,6 +280,14 @@ interface ListingRow {
   location?: string | null;
   source?: { key?: string | null; name?: string | null } | null;
 }
+interface MarketRow {
+  watchlist_item_id: string;
+  seller?: string | null;
+  price: number | string;
+  url: string;
+  source?: { key?: string | null } | null;
+}
+
 interface PendingAlertRow {
   id: string;
   reason: string;

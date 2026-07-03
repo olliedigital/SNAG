@@ -1,5 +1,5 @@
 import { checkNow, removeItem } from "@/lib/actions";
-import { getStore } from "@/lib/store";
+import { getStore, type MarketOffer } from "@/lib/store";
 import { usingEbay, usingScout } from "@/lib/sources/active";
 import { DealCard } from "@/components/DealCard";
 import { DealFilters } from "@/components/DealFilters";
@@ -13,15 +13,38 @@ interface PageSearchParams {
   sort?: string;
 }
 
+// Lowest tracked price per store — the whole market at a glance, deals or not.
+function MarketStrip({ offers }: { offers: MarketOffer[] }) {
+  if (offers.length < 2) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-[11px] uppercase tracking-wide text-neutral-500">Across the market:</span>
+      {offers.map((o) => (
+        <a
+          key={o.store}
+          href={o.url}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs text-neutral-300 transition hover:border-emerald-500/50"
+        >
+          <span className="capitalize">{o.store}</span>{" "}
+          <span className="font-semibold text-emerald-300">${o.price.toFixed(0)}</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export default async function Page({ searchParams }: { searchParams: Promise<PageSearchParams> }) {
   const { item: itemFilter = "", sort = "best" } = await searchParams;
 
   const store = getStore();
   await store.ensureSeeded();
-  const [items, allDeals, priceStats] = await Promise.all([
+  const [items, allDeals, priceStats, market] = await Promise.all([
     store.getItems(),
     store.getDeals(),
     store.getItemPriceStats(),
+    store.getMarketSnapshot(),
   ]);
   const ebay = usingEbay();
 
@@ -122,6 +145,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
           />
         </div>
 
+        {itemFilter && market[itemFilter] && <MarketStrip offers={market[itemFilter]} />}
+
         {deals.length === 0 ? (
           <p className="rounded-xl border border-dashed border-neutral-800 px-4 py-8 text-center text-sm text-neutral-500">
             {itemFilter
@@ -142,6 +167,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
                       {priceStats[g.item.id] ? ` · typical $${priceStats[g.item.id].median.toFixed(0)}` : ""}
                     </span>
                   </div>
+                  {market[g.item.id] && <MarketStrip offers={market[g.item.id]} />}
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {g.deals.map((d) => (
                       <DealCard key={d.alert.id} deal={d} stats={priceStats[d.item.id]} />
