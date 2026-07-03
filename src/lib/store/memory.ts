@@ -2,7 +2,7 @@ import { judgeListings } from "../judge";
 import { activeSources } from "../sources/active";
 import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Listing, WatchlistItem } from "../types";
-import type { Deal, NewWatchItem, SnagStore, StoredAlert } from "./store";
+import { computePriceStats, type Deal, type NewWatchItem, type PriceStats, type SnagStore, type StoredAlert } from "./store";
 
 // In-memory demo backend. Implements SnagStore so the app can run with zero
 // configuration. State lives in the server process and resets on restart — used
@@ -99,6 +99,14 @@ export class MemoryStore implements SnagStore {
 
   async getPendingAlerts() {
     return []; // demo mode doesn't email
+  }
+
+  async getItemPriceStats(): Promise<Record<string, PriceStats>> {
+    const byItem: Record<string, number[]> = {};
+    for (const l of this.listings.values()) {
+      (byItem[l.watchlistItemId] ??= []).push(l.price);
+    }
+    return computePriceStats(byItem);
   }
 
   async markAlertsSent(): Promise<void> {}

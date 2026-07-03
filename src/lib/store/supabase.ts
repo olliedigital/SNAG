@@ -4,7 +4,7 @@ import type { PendingAlert } from "../notify";
 import { activeSources } from "../sources/active";
 import { runWatch, type WatchSummary } from "../watch";
 import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
-import type { Deal, NewWatchItem, SnagStore, StoredAlert } from "./store";
+import { computePriceStats, type Deal, type NewWatchItem, type PriceStats, type SnagStore, type StoredAlert } from "./store";
 
 // Supabase-backed store. Server-side only: it uses the service role key, which
 // bypasses RLS, so the database stays fully locked to the public.
@@ -199,6 +199,15 @@ export class SupabaseStore implements SnagStore {
       });
     }
     return out;
+  }
+
+  async getItemPriceStats(): Promise<Record<string, PriceStats>> {
+    const { data } = await this.sb.from("listings").select("watchlist_item_id, price");
+    const byItem: Record<string, number[]> = {};
+    for (const r of (data ?? []) as { watchlist_item_id: string; price: number | string }[]) {
+      (byItem[r.watchlist_item_id] ??= []).push(Number(r.price));
+    }
+    return computePriceStats(byItem);
   }
 
   async markAlertsSent(ids: string[]): Promise<void> {

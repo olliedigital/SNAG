@@ -40,4 +40,29 @@ export interface SnagStore extends Store {
   // Email-alert queue: alerts not yet notified, and marking them sent.
   getPendingAlerts(): Promise<PendingAlert[]>;
   markAlertsSent(ids: string[]): Promise<void>;
+  // Current price spread per watchlist item (drives the market-position bar).
+  getItemPriceStats(): Promise<Record<string, PriceStats>>;
+}
+
+export interface PriceStats {
+  min: number;
+  max: number;
+  median: number;
+  count: number;
+}
+
+export function computePriceStats(pricesByItem: Record<string, number[]>): Record<string, PriceStats> {
+  const out: Record<string, PriceStats> = {};
+  for (const [itemId, prices] of Object.entries(pricesByItem)) {
+    const s = prices.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+    if (s.length === 0) continue;
+    const mid = Math.floor(s.length / 2);
+    out[itemId] = {
+      min: s[0],
+      max: s[s.length - 1],
+      median: s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2,
+      count: s.length,
+    };
+  }
+  return out;
 }
