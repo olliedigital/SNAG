@@ -14,17 +14,20 @@ export function DealFilters({
   items,
   currentItem,
   currentSort,
+  currentCond,
 }: {
   items: DealFilterItem[];
   currentItem: string;
   currentSort: string;
+  currentCond: string;
 }) {
   const router = useRouter();
 
-  function navigate(item: string, sort: string) {
+  function navigate(item: string, sort: string, cond: string) {
     const q = new URLSearchParams();
     if (item) q.set("item", item);
     if (sort && sort !== "best") q.set("sort", sort);
+    if (cond && cond !== "any") q.set("cond", cond);
     const qs = q.toString();
     router.push(qs ? `/?${qs}` : "/", { scroll: false });
   }
@@ -35,7 +38,7 @@ export function DealFilters({
         aria-label="Filter by shoe"
         className={selectClass}
         value={currentItem}
-        onChange={(e) => navigate(e.target.value, currentSort)}
+        onChange={(e) => navigate(e.target.value, currentSort, currentCond)}
       >
         <option value="">All shoes</option>
         {items.map((it) => (
@@ -46,10 +49,21 @@ export function DealFilters({
       </select>
 
       <select
+        aria-label="Filter by condition"
+        className={selectClass}
+        value={currentCond}
+        onChange={(e) => navigate(currentItem, currentSort, e.target.value)}
+      >
+        <option value="any">Any condition</option>
+        <option value="new">Brand new</option>
+        <option value="used">Used</option>
+      </select>
+
+      <select
         aria-label="Sort deals"
         className={selectClass}
         value={currentSort}
-        onChange={(e) => navigate(currentItem, e.target.value)}
+        onChange={(e) => navigate(currentItem, e.target.value, currentCond)}
       >
         <option value="best">Best deal first</option>
         <option value="price_asc">Price: low to high</option>

@@ -11,6 +11,16 @@ export const dynamic = "force-dynamic";
 interface PageSearchParams {
   item?: string;
   sort?: string;
+  cond?: string;
+}
+
+// "New"/"New with box" -> new; "Pre-owned"/"Used"/"Worn" -> used; unlabeled -> unknown.
+function conditionBucket(c?: string): "new" | "used" | "unknown" {
+  if (!c) return "unknown";
+  const s = c.toLowerCase();
+  if (s.includes("pre-owned") || s.includes("used") || s.includes("worn") || s.includes("refurb")) return "used";
+  if (s.includes("new")) return "new";
+  return "unknown";
 }
 
 // Lowest tracked price per store — the whole market at a glance, deals or not.
@@ -56,7 +66,7 @@ function HuntMeter({ strike, stats }: { strike?: number; stats?: PriceStats }) {
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<PageSearchParams> }) {
-  const { item: itemFilter = "", sort = "best" } = await searchParams;
+  const { item: itemFilter = "", sort = "best", cond = "any" } = await searchParams;
 
   const store = getStore();
   await store.ensureSeeded();
@@ -74,7 +84,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
     0,
   );
 
-  const deals = [...(itemFilter ? allDeals.filter((d) => d.item.id === itemFilter) : allDeals)];
+  let deals = [...(itemFilter ? allDeals.filter((d) => d.item.id === itemFilter) : allDeals)];
+  if (cond === "new" || cond === "used") {
+    deals = deals.filter((d) => conditionBucket(d.listing.condition) === cond);
+  }
   switch (sort) {
     case "price_asc":
       deals.sort((a, b) => a.listing.price - b.listing.price);
@@ -195,6 +208,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
             items={items.map((it) => ({ id: it.id, title: it.title }))}
             currentItem={itemFilter}
             currentSort={sort}
+            currentCond={cond}
           />
         </div>
 
@@ -202,9 +216,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
 
         {deals.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-stone-300 bg-white/60 px-4 py-8 text-center text-sm text-stone-500">
-            {itemFilter
-              ? "No deals for this shoe yet — SNAG checks every hour."
-              : "No deals surfaced yet. SNAG checks every hour, or click “Check for deals now.”"}
+            {cond !== "any"
+              ? `No ${cond === "new" ? "brand-new" : "used"} deals right now — try “Any condition.”`
+              : itemFilter
+                ? "No deals for this shoe yet — SNAG checks every hour."
+                : "No deals surfaced yet. SNAG checks every hour, or click “Check for deals now.”"}
           </p>
         ) : (
           <>

@@ -34,6 +34,10 @@ export class ShoppingScoutSource implements ListingSource {
     return (json.shopping ?? [])
       .map((r) => {
         const price = parsePrice(r.price);
+        // Retail stores sell new; resale marketplaces could be either, so those
+        // stay unlabeled rather than guessed.
+        const store = (r.source ?? "").toLowerCase();
+        const resale = ["ebay", "poshmark", "grailed", "whatnot", "mercari", "depop"].some((m) => store.includes(m));
         return {
           sourceListingId: r.productId ?? r.link,
           title: r.source ? `${r.title} — ${r.source}` : r.title,
@@ -42,6 +46,7 @@ export class ShoppingScoutSource implements ListingSource {
           url: storeSearchUrl(r.source, r.title, r.link),
           price,
           currency: "USD",
+          condition: resale ? undefined : "new",
           imageUrl: r.imageUrl,
           seller: r.source, // merchant/store name (business, not personal data)
           raw: undefined,
