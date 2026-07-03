@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 
 const selectClass =
-  "rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-200 focus:border-emerald-500 focus:outline-none";
+  "rounded-xl border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-700 shadow-sm focus:border-emerald-500 focus:outline-none";
 
 export interface DealFilterItem {
   id: string;

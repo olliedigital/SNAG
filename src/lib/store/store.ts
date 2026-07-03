@@ -33,6 +33,7 @@ export interface NewWatchItem {
 export interface SnagStore extends Store {
   addItem(input: NewWatchItem): Promise<WatchlistItem>;
   removeItem(id: string): Promise<void>;
+  setMaxPrice(id: string, maxPrice: number | null): Promise<void>;
   getItems(): Promise<WatchlistItem[]>;
   getDeals(): Promise<Deal[]>;
   runCheck(): Promise<WatchSummary>;

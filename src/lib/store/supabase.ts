@@ -152,6 +152,10 @@ export class SupabaseStore implements SnagStore {
     await this.sb.from("watchlist_items").delete().eq("id", id);
   }
 
+  async setMaxPrice(id: string, maxPrice: number | null): Promise<void> {
+    await this.sb.from("watchlist_items").update({ max_price: maxPrice }).eq("id", id);
+  }
+
   async getItems(): Promise<WatchlistItem[]> {
     const { data } = await this.sb
       .from("watchlist_items")

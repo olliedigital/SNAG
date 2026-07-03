@@ -26,3 +26,12 @@ export async function removeItem(formData: FormData): Promise<void> {
   await getStore().removeItem(String(formData.get("id") ?? ""));
   revalidatePath("/");
 }
+
+export async function setStrike(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const raw = String(formData.get("strike") ?? "").trim();
+  const n = raw ? Number(raw) : NaN;
+  await getStore().setMaxPrice(id, Number.isFinite(n) && n > 0 ? n : null);
+  revalidatePath("/");
+}

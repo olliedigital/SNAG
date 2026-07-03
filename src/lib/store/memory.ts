@@ -83,6 +83,11 @@ export class MemoryStore implements SnagStore {
     this.alerts = this.alerts.filter((a) => a.watchlistItemId !== id);
   }
 
+  async setMaxPrice(id: string, maxPrice: number | null): Promise<void> {
+    const item = this.items.find((i) => i.id === id);
+    if (item) item.maxPrice = maxPrice ?? undefined;
+  }
+
   async getItems(): Promise<WatchlistItem[]> {
     return this.items;
   }

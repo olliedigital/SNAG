@@ -1,5 +1,5 @@
-import { checkNow, removeItem } from "@/lib/actions";
-import { getStore, type MarketOffer } from "@/lib/store";
+import { checkNow, removeItem, setStrike } from "@/lib/actions";
+import { getStore, type MarketOffer, type PriceStats } from "@/lib/store";
 import { usingEbay, usingScout } from "@/lib/sources/active";
 import { DealCard } from "@/components/DealCard";
 import { DealFilters } from "@/components/DealFilters";
@@ -18,19 +18,39 @@ function MarketStrip({ offers }: { offers: MarketOffer[] }) {
   if (offers.length < 2) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] uppercase tracking-wide text-neutral-500">Across the market:</span>
+      <span className="text-[11px] uppercase tracking-wide text-stone-400">Across the market:</span>
       {offers.map((o) => (
         <a
           key={o.store}
           href={o.url}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs text-neutral-300 transition hover:border-emerald-500/50"
+          className="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs text-stone-600 shadow-sm transition hover:border-emerald-400"
         >
           <span className="capitalize">{o.store}</span>{" "}
-          <span className="font-semibold text-emerald-300">${o.price.toFixed(0)}</span>
+          <span className="font-semibold text-emerald-700">${o.price.toFixed(0)}</span>
         </a>
       ))}
+    </div>
+  );
+}
+
+// How close the market is to the user's strike price — the game meter.
+function HuntMeter({ strike, stats }: { strike?: number; stats?: PriceStats }) {
+  if (!strike || !stats || stats.count < 1) return null;
+  const hit = stats.min <= strike;
+  const progress = hit ? 100 : Math.max(4, Math.min(100, Math.round((strike / stats.min) * 100)));
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-36 overflow-hidden rounded-full bg-stone-200">
+        <div
+          className={`h-full rounded-full ${hit ? "bg-amber-400" : "bg-emerald-500"}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <span className={`text-xs ${hit ? "font-semibold text-amber-600" : "text-stone-500"}`}>
+        {hit ? "🎯 strike hit!" : `best $${stats.min.toFixed(0)} → strike $${strike.toFixed(0)}`}
+      </span>
     </div>
   );
 }
@@ -47,6 +67,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
     store.getMarketSnapshot(),
   ]);
   const ebay = usingEbay();
+
+  const listingsTracked = Object.values(priceStats).reduce((s, p) => s + p.count, 0);
+  const potentialSavings = allDeals.reduce(
+    (s, d) => s + Math.max(0, (d.alert.referencePrice ?? d.listing.price) - d.listing.price),
+    0,
+  );
 
   const deals = [...(itemFilter ? allDeals.filter((d) => d.item.id === itemFilter) : allDeals)];
   switch (sort) {
@@ -66,8 +92,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
       break; // "best": already sorted by deal score
   }
 
-  // Spotlight the single best deal when sorted by "best"; group the remainder
-  // per shoe in the all-shoes view so different watches never interleave.
   const isBestSort = sort === "best";
   const hero =
     isBestSort && deals.length > 0
@@ -83,45 +107,74 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            SNAG<span className="text-emerald-400">.</span>
+          <h1 className="text-3xl font-black tracking-tight">
+            SNAG<span className="text-emerald-600">.</span>
           </h1>
-          <p className="text-sm text-neutral-400">
-            Watches for the sneakers you want — and flags the best deals.
-          </p>
+          <p className="text-sm text-stone-500">Watches for the sneakers you want — and flags the best deals.</p>
         </div>
         <form action={checkNow}>
           <SubmitButton>Check for deals now</SubmitButton>
         </form>
       </header>
 
+      <div className="mb-10 flex flex-wrap gap-6 rounded-2xl border border-stone-200 bg-white px-5 py-4 shadow-sm">
+        <div>
+          <div className="text-2xl font-bold text-stone-900">{listingsTracked}</div>
+          <div className="text-xs uppercase tracking-wide text-stone-400">listings tracked</div>
+        </div>
+        <div>
+          <div className="text-2xl font-bold text-stone-900">{allDeals.length}</div>
+          <div className="text-xs uppercase tracking-wide text-stone-400">deals found</div>
+        </div>
+        <div>
+          <div className="text-2xl font-bold text-emerald-600">${potentialSavings.toFixed(0)}</div>
+          <div className="text-xs uppercase tracking-wide text-stone-400">potential savings spotted</div>
+        </div>
+        <div className="ml-auto self-center text-right text-xs text-stone-400">
+          hunting 24/7,
+          <br />
+          every hour
+        </div>
+      </div>
+
       <section className="mb-10 space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Your watchlist</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400">Your watchlist</h2>
         <WatchlistForm />
         {items.length > 0 ? (
-          <ul className="divide-y divide-neutral-800 rounded-xl border border-neutral-800 bg-neutral-900">
+          <ul className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white shadow-sm">
             {items.map((it) => {
               const s = priceStats[it.id];
               return (
-                <li key={it.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <li key={it.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
                     <span className="mr-2">👟</span>
                     <span className="font-medium">{it.title}</span>
-                    {typeof it.maxPrice === "number" && (
-                      <span className="ml-2 text-xs text-neutral-500">under ${it.maxPrice}</span>
+                    {s && s.count >= 3 && (
+                      <span className="ml-2 hidden text-xs text-stone-400 sm:inline">
+                        typical <span className="text-stone-600">${s.median.toFixed(0)}</span> · {s.count} tracked
+                      </span>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    {s && s.count >= 3 && (
-                      <span className="hidden text-xs text-neutral-500 sm:inline">
-                        typical <span className="text-neutral-300">${s.median.toFixed(0)}</span> · {s.count} listings
-                      </span>
-                    )}
+                    <HuntMeter strike={it.maxPrice} stats={s} />
+                    <form action={setStrike} className="flex items-center gap-1">
+                      <input type="hidden" name="id" value={it.id} />
+                      <input
+                        name="strike"
+                        type="number"
+                        min="0"
+                        step="1"
+                        defaultValue={it.maxPrice ?? ""}
+                        placeholder="🎯 strike $"
+                        className="w-24 rounded-lg border border-stone-300 bg-stone-50 px-2 py-1 text-xs text-stone-700 placeholder:text-stone-400 focus:border-amber-400 focus:outline-none"
+                      />
+                      <button className="text-xs font-medium text-stone-500 transition hover:text-amber-600">Set</button>
+                    </form>
                     <form action={removeItem}>
                       <input type="hidden" name="id" value={it.id} />
-                      <button className="text-xs text-neutral-500 transition hover:text-red-400">Remove</button>
+                      <button className="text-xs text-stone-400 transition hover:text-red-500">Remove</button>
                     </form>
                   </div>
                 </li>
@@ -129,13 +182,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
             })}
           </ul>
         ) : (
-          <p className="text-sm text-neutral-500">Nothing yet — add your first sneaker above.</p>
+          <p className="text-sm text-stone-500">Nothing yet — add your first sneaker above.</p>
         )}
       </section>
 
       <section className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400">
             Deals found ({deals.length})
           </h2>
           <DealFilters
@@ -148,7 +201,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
         {itemFilter && market[itemFilter] && <MarketStrip offers={market[itemFilter]} />}
 
         {deals.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-neutral-800 px-4 py-8 text-center text-sm text-neutral-500">
+          <p className="rounded-2xl border border-dashed border-stone-300 bg-white/60 px-4 py-8 text-center text-sm text-stone-500">
             {itemFilter
               ? "No deals for this shoe yet — SNAG checks every hour."
               : "No deals surfaced yet. SNAG checks every hour, or click “Check for deals now.”"}
@@ -160,12 +213,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
             {grouped ? (
               grouped.map((g) => (
                 <div key={g.item.id} className="space-y-3 pt-2">
-                  <div className="flex items-baseline gap-3">
-                    <h3 className="font-semibold text-neutral-200">👟 {g.item.title}</h3>
-                    <span className="text-xs text-neutral-500">
+                  <div className="flex flex-wrap items-baseline gap-3">
+                    <h3 className="font-semibold text-stone-800">👟 {g.item.title}</h3>
+                    <span className="text-xs text-stone-400">
                       {g.deals.length} deal{g.deals.length > 1 ? "s" : ""}
                       {priceStats[g.item.id] ? ` · typical $${priceStats[g.item.id].median.toFixed(0)}` : ""}
                     </span>
+                    <HuntMeter strike={g.item.maxPrice} stats={priceStats[g.item.id]} />
                   </div>
                   {market[g.item.id] && <MarketStrip offers={market[g.item.id]} />}
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -186,7 +240,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
         )}
       </section>
 
-      <footer className="mt-12 border-t border-neutral-900 pt-4 text-xs text-neutral-600">
+      <footer className="mt-12 border-t border-stone-200 pt-4 text-xs text-stone-400">
         {ebay
           ? `Live sneaker listings from eBay${usingScout() ? " + web-wide price scout (StockX, GOAT & more via the shopping index)" : ""}. AI-verified matches. Hunting hourly.`
           : "Demo mode — add your eBay developer key to pull live listings."}
