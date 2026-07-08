@@ -1,9 +1,13 @@
 import { checkNow, removeItem, setStrike } from "@/lib/actions";
-import { getStore, type MarketOffer, type PriceStats } from "@/lib/store";
+import { getStore, type Deal, type MarketOffer, type PriceStats } from "@/lib/store";
 import { usingEbay, usingScout } from "@/lib/sources/active";
 import { DealCard } from "@/components/DealCard";
 import { DealFilters } from "@/components/DealFilters";
+import { GoldSnag } from "@/components/GoldSnag";
+import { HeroDeal } from "@/components/HeroDeal";
+import { SnagMark } from "@/components/SnagMark";
 import { SubmitButton } from "@/components/SubmitButton";
+import { Ticker } from "@/components/Ticker";
 import { WatchlistForm } from "@/components/WatchlistForm";
 
 export const dynamic = "force-dynamic";
@@ -23,44 +27,80 @@ function conditionBucket(c?: string): "new" | "used" | "unknown" {
   return "unknown";
 }
 
-// Lowest tracked price per store — the whole market at a glance, deals or not.
-function MarketStrip({ offers }: { offers: MarketOffer[] }) {
+function shortAgo(ts: number): string {
+  const m = Math.max(1, Math.round((Date.now() - ts) / 60000));
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+
+const GENDER_LABEL: Record<string, string> = { men: "Men", women: "Women", kids: "Kids" };
+
+// How close the market is to the user's strike — the row's hunt meter.
+function watchMeter(strike: number | undefined, s: PriceStats | undefined) {
+  if (strike && s && s.count >= 1) {
+    const hit = s.min <= strike;
+    return {
+      pct: hit ? 100 : Math.max(6, Math.min(100, Math.round((strike / s.min) * 100))),
+      fill: hit ? "bg-gold" : "bg-live",
+      status: hit
+        ? "Strike hit — claim it before it's gone."
+        : `Best right now $${s.min.toFixed(0)} · typical $${s.median.toFixed(0)}`,
+      label: hit ? "STRIKE HIT" : `$${s.min.toFixed(0)} → $${strike.toFixed(0)}`,
+      labelColor: hit ? "text-gold" : "text-live",
+    };
+  }
+  if (strike) {
+    return {
+      pct: 5,
+      fill: "bg-bone/25",
+      status: "Armed — hunting for listings.",
+      label: `STRIKE $${strike.toFixed(0)}`,
+      labelColor: "text-bone/45",
+    };
+  }
+  if (s && s.count >= 1) {
+    return {
+      pct: 0,
+      fill: "bg-bone/20",
+      status: `Best right now $${s.min.toFixed(0)} · typical $${s.median.toFixed(0)}`,
+      label: "SET A STRIKE",
+      labelColor: "text-bone/45",
+    };
+  }
+  return { pct: 0, fill: "bg-bone/20", status: "Hunting — no listings priced yet.", label: "WATCHING", labelColor: "text-bone/45" };
+}
+
+// The "across the market" chips: lowest tracked price per store.
+function MarketChips({ offers }: { offers: MarketOffer[] }) {
   if (offers.length < 2) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] uppercase tracking-wide text-stone-400">Across the market:</span>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-bone/35">Across the market</span>
       {offers.map((o) => (
         <a
           key={o.store}
           href={o.url}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs text-stone-600 shadow-sm transition hover:border-emerald-400"
+          className="rounded-full border border-bone/16 px-2.5 py-1 font-sans text-xs font-semibold text-bone/75 transition hover:border-bone/40"
         >
-          <span className="capitalize">{o.store}</span>{" "}
-          <span className="font-semibold text-emerald-700">${o.price.toFixed(0)}</span>
+          <span className="capitalize text-bone/45">{o.store}</span> ${o.price.toFixed(0)}
         </a>
       ))}
     </div>
   );
 }
 
-// How close the market is to the user's strike price — the game meter.
-function HuntMeter({ strike, stats }: { strike?: number; stats?: PriceStats }) {
-  if (!strike || !stats || stats.count < 1) return null;
-  const hit = stats.min <= strike;
-  const progress = hit ? 100 : Math.max(4, Math.min(100, Math.round((strike / stats.min) * 100)));
+function SectionHeader({ n, title, trailing }: { n: string; title: string; trailing?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 w-36 overflow-hidden rounded-full bg-stone-200">
-        <div
-          className={`h-full rounded-full ${hit ? "bg-amber-400" : "bg-emerald-500"}`}
-          style={{ width: `${progress}%` }}
-        />
+    <div className="flex flex-wrap items-end justify-between gap-4 border-b border-bone/14 pb-4">
+      <div className="flex flex-wrap items-baseline gap-3.5">
+        <span className="font-sans text-xs font-semibold tracking-[0.2em] text-bone/35">{n}</span>
+        <h2 className="font-display text-3xl font-extrabold uppercase tracking-[-0.01em]">{title}</h2>
+        {trailing}
       </div>
-      <span className={`text-xs ${hit ? "font-semibold text-amber-600" : "text-stone-500"}`}>
-        {hit ? "🎯 strike hit!" : `best $${stats.min.toFixed(0)} → strike $${strike.toFixed(0)}`}
-      </span>
     </div>
   );
 }
@@ -83,7 +123,22 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
     (s, d) => s + Math.max(0, (d.alert.referencePrice ?? d.listing.price) - d.listing.price),
     0,
   );
+  const lastSnag = allDeals.length > 0 ? Math.max(...allDeals.map((d) => d.alert.createdAt)) : null;
 
+  // The win banner: best deal that hit the user's strike price.
+  const snagged = allDeals.find((d) => d.alert.basis === "max_price");
+
+  // Ticker headlines from the real board.
+  const tickerItems: string[] = [];
+  for (const d of allDeals.slice(0, 6)) {
+    const pct = d.alert.dealScore ? Math.round(d.alert.dealScore * 100) : 0;
+    const st = (d.listing.seller ?? d.listing.sourceKey).toUpperCase();
+    if (d.alert.basis === "max_price") tickerItems.push(`${d.item.title} — strike hit`);
+    else if (pct > 0) tickerItems.push(`${d.item.title} −${pct}% ${st}`);
+  }
+  tickerItems.push(`${listingsTracked} listings under watch`, "The agent never sleeps");
+
+  // --- Deals board: filter, sort, group ---
   let deals = [...(itemFilter ? allDeals.filter((d) => d.item.id === itemFilter) : allDeals)];
   if (cond === "new" || cond === "used") {
     deals = deals.filter((d) => conditionBucket(d.listing.condition) === cond);
@@ -106,10 +161,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
   }
 
   const isBestSort = sort === "best";
-  const hero =
-    isBestSort && deals.length > 0
-      ? deals.reduce((a, b) => ((b.alert.dealScore ?? 0) > (a.alert.dealScore ?? 0) ? b : a))
-      : null;
+  // Hero showcases the biggest discount; strike wins live in the gold banner.
+  const hero: Deal | null =
+    isBestSort && deals.length > 0 ? (deals.find((d) => d.alert.basis !== "max_price") ?? deals[0]) : null;
   const rest = hero ? deals.filter((d) => d.alert.id !== hero.alert.id) : deals;
   const grouped =
     isBestSort && !itemFilter
@@ -119,148 +173,197 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
       : null;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">
-            SNAG<span className="text-emerald-600">.</span>
-          </h1>
-          <p className="text-sm text-stone-500">Watches for the sneakers you want — and flags the best deals.</p>
-        </div>
-        <form action={checkNow}>
-          <SubmitButton>Check for deals now</SubmitButton>
-        </form>
-      </header>
+    <>
+      <Ticker items={tickerItems} />
 
-      <div className="mb-10 flex flex-wrap gap-6 rounded-2xl border border-stone-200 bg-white px-5 py-4 shadow-sm">
-        <div>
-          <div className="text-2xl font-bold text-stone-900">{listingsTracked}</div>
-          <div className="text-xs uppercase tracking-wide text-stone-400">listings tracked</div>
+      {/* nav */}
+      <nav className="mx-auto flex max-w-[1200px] items-center justify-between px-7 py-[22px]">
+        <div className="flex items-center gap-2.5">
+          <SnagMark className="h-8 w-8 text-live" pulse glow />
+          <span className="font-display text-[26px] font-extrabold leading-none tracking-[-0.01em]">SNAG</span>
         </div>
-        <div>
-          <div className="text-2xl font-bold text-stone-900">{allDeals.length}</div>
-          <div className="text-xs uppercase tracking-wide text-stone-400">deals found</div>
-        </div>
-        <div>
-          <div className="text-2xl font-bold text-emerald-600">${potentialSavings.toFixed(0)}</div>
-          <div className="text-xs uppercase tracking-wide text-stone-400">potential savings spotted</div>
-        </div>
-        <div className="ml-auto self-center text-right text-xs text-stone-400">
-          hunting 24/7,
-          <br />
-          every hour
-        </div>
-      </div>
+        <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-bone/50">
+          Hunting · {lastSnag ? `last snag ${shortAgo(lastSnag)}` : "sweeps every hour"}
+        </span>
+      </nav>
 
-      <section className="mb-10 space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400">Your watchlist</h2>
-        <WatchlistForm />
-        {items.length > 0 ? (
-          <ul className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white shadow-sm">
-            {items.map((it) => {
-              const s = priceStats[it.id];
-              return (
-                <li key={it.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <span className="mr-2">👟</span>
-                    <span className="font-medium">{it.title}</span>
-                    {s && s.count >= 3 && (
-                      <span className="ml-2 hidden text-xs text-stone-400 sm:inline">
-                        typical <span className="text-stone-600">${s.median.toFixed(0)}</span> · {s.count} tracked
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <HuntMeter strike={it.maxPrice} stats={s} />
-                    <form action={setStrike} className="flex items-center gap-1">
-                      <input type="hidden" name="id" value={it.id} />
-                      <input
-                        name="strike"
-                        type="number"
-                        min="0"
-                        step="1"
-                        defaultValue={it.maxPrice ?? ""}
-                        placeholder="🎯 strike $"
-                        className="w-24 rounded-lg border border-stone-300 bg-stone-50 px-2 py-1 text-xs text-stone-700 placeholder:text-stone-400 focus:border-amber-400 focus:outline-none"
-                      />
-                      <button className="text-xs font-medium text-stone-500 transition hover:text-amber-600">Set</button>
-                    </form>
-                    <form action={removeItem}>
-                      <input type="hidden" name="id" value={it.id} />
-                      <button className="text-xs text-stone-400 transition hover:text-red-500">Remove</button>
-                    </form>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="text-sm text-stone-500">Nothing yet — add your first sneaker above.</p>
-        )}
-      </section>
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-20 px-7 pb-24">
+        {/* hero / headline */}
+        <header className="flex flex-col gap-9 pt-5">
+          <div className="flex flex-col gap-[18px]">
+            <span className="font-sans text-xs font-semibold tracking-[0.28em] text-live">YOUR PERSONAL DEAL AGENT</span>
+            <h1 className="font-display text-[clamp(52px,9vw,124px)] font-black uppercase leading-[0.9] tracking-[-0.02em]">
+              Hunt the
+              <br />
+              whole market.
+              <br />
+              <span className="text-bone/35">Claim the W.</span>
+            </h1>
+            <p className="max-w-[520px] font-sans text-[17px] leading-[1.5] text-bone/60">
+              SNAG watches eBay, StockX, GOAT and more — 24/7 — and pings you the second a verified pair drops below what
+              it should cost.
+            </p>
+          </div>
 
-      <section className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400">
-            Deals found ({deals.length})
-          </h2>
-          <DealFilters
-            items={items.map((it) => ({ id: it.id, title: it.title }))}
-            currentItem={itemFilter}
-            currentSort={sort}
-            currentCond={cond}
-          />
-        </div>
-
-        {itemFilter && market[itemFilter] && <MarketStrip offers={market[itemFilter]} />}
-
-        {deals.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-stone-300 bg-white/60 px-4 py-8 text-center text-sm text-stone-500">
-            {cond !== "any"
-              ? `No ${cond === "new" ? "brand-new" : "used"} deals right now — try “Any condition.”`
-              : itemFilter
-                ? "No deals for this shoe yet — SNAG checks every hour."
-                : "No deals surfaced yet. SNAG checks every hour, or click “Check for deals now.”"}
-          </p>
-        ) : (
-          <>
-            {hero && <DealCard deal={hero} stats={priceStats[hero.item.id]} showItem={!itemFilter} hero />}
-
-            {grouped ? (
-              grouped.map((g) => (
-                <div key={g.item.id} className="space-y-3 pt-2">
-                  <div className="flex flex-wrap items-baseline gap-3">
-                    <h3 className="font-semibold text-stone-800">👟 {g.item.title}</h3>
-                    <span className="text-xs text-stone-400">
-                      {g.deals.length} deal{g.deals.length > 1 ? "s" : ""}
-                      {priceStats[g.item.id] ? ` · typical $${priceStats[g.item.id].median.toFixed(0)}` : ""}
-                    </span>
-                    <HuntMeter strike={g.item.maxPrice} stats={priceStats[g.item.id]} />
-                  </div>
-                  {market[g.item.id] && <MarketStrip offers={market[g.item.id]} />}
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {g.deals.map((d) => (
-                      <DealCard key={d.alert.id} deal={d} stats={priceStats[d.item.id]} />
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {rest.map((d) => (
-                  <DealCard key={d.alert.id} deal={d} stats={priceStats[d.item.id]} showItem={!itemFilter} />
-                ))}
+          {/* scoreboard */}
+          <div className="grid gap-px border border-bone/10 bg-bone/10 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+            {[
+              { v: String(listingsTracked), l: "Listings tracked", c: "" },
+              { v: String(allDeals.length), l: "Deals live now", c: "" },
+              { v: `$${potentialSavings.toFixed(0)}`, l: "Potential savings", c: "text-live" },
+            ].map((s) => (
+              <div key={s.l} className="flex flex-col gap-1.5 bg-ink px-7 py-[26px]">
+                <span className={`font-display text-[52px] font-extrabold leading-[0.9] tracking-[-0.02em] ${s.c}`}>{s.v}</span>
+                <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-bone/45">{s.l}</span>
               </div>
-            )}
-          </>
-        )}
-      </section>
+            ))}
+          </div>
+        </header>
 
-      <footer className="mt-12 border-t border-stone-200 pt-4 text-xs text-stone-400">
-        {ebay
-          ? `Live sneaker listings from eBay${usingScout() ? " + web-wide price scout (StockX, GOAT & more via the shopping index)" : ""}. AI-verified matches. Hunting hourly.`
-          : "Demo mode — add your eBay developer key to pull live listings."}
-      </footer>
-    </main>
+        {snagged && <GoldSnag deal={snagged} />}
+
+        {/* 01 — watchlist */}
+        <section className="flex flex-col gap-6">
+          <SectionHeader
+            n="01"
+            title="Watchlist"
+            trailing={<span className="font-sans text-[13px] text-bone/50">Set your strike. The agent does the rest.</span>}
+          />
+          <WatchlistForm />
+
+          {items.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {items.map((it) => {
+                const s = priceStats[it.id];
+                const m = watchMeter(it.maxPrice, s);
+                const spec =
+                  [
+                    it.attributes?.colorway,
+                    it.attributes?.gender ? (GENDER_LABEL[String(it.attributes.gender)] ?? String(it.attributes.gender)) : "",
+                    it.attributes?.size ? `US ${it.attributes.size}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Any spec · all listings";
+                return (
+                  <div
+                    key={it.id}
+                    className="flex flex-wrap items-center gap-6 rounded-sm border border-bone/10 bg-surface px-6 py-5 transition hover:border-bone/28"
+                  >
+                    <div className="flex min-w-[180px] flex-1 flex-col gap-1">
+                      <span className="font-sans text-[17px] font-bold tracking-[0.01em]">{it.title}</span>
+                      <span className="font-sans text-xs font-medium text-bone/40">{spec}</span>
+                    </div>
+
+                    <div className="flex min-w-[220px] flex-[2] flex-col gap-2">
+                      <div className="relative h-1.5 overflow-hidden rounded-full bg-bone/10">
+                        <div className={`absolute inset-y-0 left-0 rounded-full ${m.fill}`} style={{ width: `${m.pct}%` }} />
+                      </div>
+                      <div className="flex justify-between gap-2.5">
+                        <span className="font-sans text-[12.5px] text-bone/55">{m.status}</span>
+                        <span className={`whitespace-nowrap font-sans text-[11px] font-bold tracking-[0.1em] ${m.labelColor}`}>
+                          {m.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    <form action={setStrike} className="flex flex-none flex-col items-end gap-px">
+                      <input type="hidden" name="id" value={it.id} />
+                      <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-bone/40">Strike</span>
+                      <div className="flex items-baseline">
+                        <span className="font-display text-lg font-bold text-bone/50">$</span>
+                        <input
+                          name="strike"
+                          type="number"
+                          min="0"
+                          step="1"
+                          defaultValue={it.maxPrice ?? ""}
+                          placeholder="—"
+                          className="w-[72px] bg-transparent text-right font-display text-[26px] font-extrabold leading-none tracking-[-0.02em] text-bone focus:outline-none"
+                        />
+                      </div>
+                      <button className="font-sans text-[10px] uppercase tracking-[0.1em] text-bone/30 transition hover:text-live">
+                        set ↵
+                      </button>
+                    </form>
+
+                    <form action={removeItem} className="flex-none">
+                      <input type="hidden" name="id" value={it.id} />
+                      <button aria-label="Remove" className="text-lg leading-none text-bone/25 transition hover:text-bone/70">
+                        ×
+                      </button>
+                    </form>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="font-sans text-sm text-bone/50">Nothing yet — put the agent on your first pair above.</p>
+          )}
+        </section>
+
+        {/* 02 — deals board */}
+        <section className="flex flex-col gap-7">
+          <SectionHeader
+            n="02"
+            title="Deals Board"
+            trailing={<span className="font-sans text-xs font-bold tracking-[0.06em] text-live">{deals.length} LIVE</span>}
+          />
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <form action={checkNow}>
+              <SubmitButton variant="ghost">↻ Sweep now</SubmitButton>
+            </form>
+            <DealFilters
+              items={items.map((it) => ({ id: it.id, title: it.title }))}
+              currentItem={itemFilter}
+              currentSort={sort}
+              currentCond={cond}
+            />
+          </div>
+
+          {itemFilter && market[itemFilter] && <MarketChips offers={market[itemFilter]} />}
+
+          {deals.length === 0 ? (
+            <div className="rounded-sm border border-dashed border-bone/18 p-12 text-center font-sans text-[15px] text-bone/45">
+              {cond !== "any"
+                ? `No ${cond === "new" ? "brand-new" : "used"} deals right now. Loosen up — the agent keeps hunting either way.`
+                : "Nothing matches those filters. Loosen up — the agent keeps hunting either way."}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-8">
+              {hero && <HeroDeal deal={hero} stats={priceStats[hero.item.id]} />}
+
+              {grouped ? (
+                grouped.map((g) => (
+                  <div key={g.item.id} className="flex flex-col gap-[18px]">
+                    <div className="flex flex-wrap items-baseline justify-between gap-3">
+                      <h3 className="font-display text-[22px] font-extrabold uppercase tracking-[-0.01em]">{g.item.title}</h3>
+                      {market[g.item.id] && <MarketChips offers={market[g.item.id]} />}
+                    </div>
+                    <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fill,minmax(290px,1fr))]">
+                      {g.deals.map((d) => (
+                        <DealCard key={d.alert.id} deal={d} stats={priceStats[d.item.id]} />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fill,minmax(290px,1fr))]">
+                  {rest.map((d) => (
+                    <DealCard key={d.alert.id} deal={d} stats={priceStats[d.item.id]} showItem={!itemFilter} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        <footer className="border-t border-bone/10 pt-6 text-center font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-bone/30">
+          {ebay
+            ? `SNAG·Agent · Live from eBay${usingScout() ? " + web scout" : ""} · Verified listings only`
+            : "SNAG·Agent · Demo mode · Add your eBay key for live listings"}
+        </footer>
+      </div>
+    </>
   );
 }

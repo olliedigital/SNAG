@@ -3,9 +3,31 @@
 @tailwind utilities;
 
 html {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {
-  @apply bg-stone-100 text-stone-900;
+  @apply bg-ink font-sans text-bone;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Native controls styled to the dark shell. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+}
+input::placeholder {
+  color: rgba(242, 240, 235, 0.32);
+}
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #f2f0eb;
+}
+
+/* Dark <option> menus in the deals filters (Windows/Chrome paints these). */
+select option {
+  background: #141416;
+  color: #f2f0eb;
 }

@@ -69,7 +69,7 @@ export class MemoryStore implements SnagStore {
       category: input.category,
       title: input.title,
       query: input.query,
-      attributes: {},
+      attributes: input.attributes ?? {},
       maxPrice: input.maxPrice,
       conditionPref: "any",
       active: true,

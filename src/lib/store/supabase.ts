@@ -141,7 +141,13 @@ export class SupabaseStore implements SnagStore {
   async addItem(input: NewWatchItem): Promise<WatchlistItem> {
     const { data, error } = await this.sb
       .from("watchlist_items")
-      .insert({ category: input.category, title: input.title, query: input.query, max_price: input.maxPrice ?? null })
+      .insert({
+        category: input.category,
+        title: input.title,
+        query: input.query,
+        max_price: input.maxPrice ?? null,
+        attributes: input.attributes ?? {},
+      })
       .select("*")
       .single();
     if (error || !data) throw new Error(`add item failed: ${error?.message ?? "no row"}`);

@@ -1,29 +1,5 @@
 import type { Deal, PriceStats } from "@/lib/store";
-
-// Visual tier by how far under market the deal is. A strike hit (the user's
-// own target price) outranks everything and goes gold.
-function tierOf(score: number | undefined, isStrike: boolean) {
-  const pct = score ? Math.round(score * 100) : 0;
-  if (isStrike)
-    return {
-      pct,
-      label: "🎯 Strike hit",
-      badge: "bg-amber-100 text-amber-800 ring-1 ring-amber-300",
-      card: "border-amber-300 ring-1 ring-amber-200 shadow-[0_12px_40px_-12px_rgba(245,158,11,0.35)]",
-    };
-  if (pct >= 35)
-    return {
-      pct,
-      label: `🔥 ${pct}% under`,
-      badge: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300",
-      card: "border-emerald-300 shadow-[0_12px_40px_-14px_rgba(16,185,129,0.35)]",
-    };
-  if (pct >= 20)
-    return { pct, label: `${pct}% under`, badge: "bg-emerald-50 text-emerald-700", card: "border-stone-200" };
-  if (pct > 0)
-    return { pct, label: `${pct}% under`, badge: "bg-stone-100 text-stone-600", card: "border-stone-200" };
-  return null;
-}
+import { SnagMark } from "@/components/SnagMark";
 
 function timeAgo(ts: number): string {
   const m = Math.max(1, Math.round((Date.now() - ts) / 60000));
@@ -36,112 +12,96 @@ function timeAgo(ts: number): string {
 const clamp = (n: number) => Math.max(2, Math.min(98, n));
 
 // Where this price sits between the cheapest and priciest listing seen for the
-// shoe — the "is this actually a deal?" bar.
-function PriceBar({ price, stats }: { price: number; stats: PriceStats }) {
+// shoe. Green fill to the price, a bone tick at the typical (median).
+function PositionBar({ price, stats }: { price: number; stats: PriceStats }) {
   if (stats.count < 3 || stats.max <= stats.min) return null;
   const span = stats.max - stats.min;
   const pos = clamp(((price - stats.min) / span) * 100);
-  const med = clamp(((stats.median - stats.min) / span) * 100);
+  const tick = clamp(((stats.median - stats.min) / span) * 100);
   return (
-    <div>
-      <div className="relative h-1.5 rounded-full bg-gradient-to-r from-emerald-400/80 via-stone-200 to-rose-300/70">
-        <div className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-stone-400" style={{ left: `${med}%` }} />
-        <div
-          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 ring-2 ring-white"
-          style={{ left: `${pos}%` }}
-        />
+    <div className="flex flex-col gap-1.5 py-0.5">
+      <div className="relative h-[5px] rounded-full bg-bone/10">
+        <div className="absolute inset-y-0 left-0 rounded-full bg-live" style={{ width: `${pos}%` }} />
+        <div className="absolute top-[-3px] h-[11px] w-0.5 rounded-[1px] bg-bone" style={{ left: `${tick}%` }} />
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-stone-400">
-        <span>${stats.min.toFixed(0)}</span>
-        <span className="text-stone-500">typical ${stats.median.toFixed(0)}</span>
-        <span>${stats.max.toFixed(0)}</span>
+      <div className="flex justify-between text-[10px] font-semibold tracking-[0.04em] text-bone/38">
+        <span>${stats.min.toFixed(0)} low</span>
+        <span>typical</span>
+        <span>${stats.max.toFixed(0)} high</span>
       </div>
     </div>
   );
 }
 
-export function DealCard({
-  deal,
-  stats,
-  showItem = false,
-  hero = false,
-}: {
-  deal: Deal;
-  stats?: PriceStats;
-  showItem?: boolean;
-  hero?: boolean;
-}) {
+export function DealCard({ deal, stats, showItem = false }: { deal: Deal; stats?: PriceStats; showItem?: boolean }) {
   const { alert, listing, item } = deal;
   const isStrike = alert.basis === "max_price";
-  const tier = tierOf(alert.dealScore, isStrike);
-
-  const image = (
-    <div
-      className={`flex items-center justify-center overflow-hidden bg-stone-50 ${
-        hero ? "h-52 sm:h-auto sm:w-64 sm:shrink-0" : "h-40"
-      }`}
-    >
-      {listing.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-contain p-3" loading="lazy" />
-      ) : (
-        <span className="text-4xl opacity-30">👟</span>
-      )}
-    </div>
-  );
-
-  const body = (
-    <div className={`flex flex-1 flex-col gap-2.5 p-4 ${hero ? "sm:p-6" : ""}`}>
-      {hero && (
-        <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">🏆 Best snag right now</div>
-      )}
-      {isStrike && (
-        <div className="text-[11px] font-bold uppercase tracking-widest text-amber-600">
-          🎯 Snagged — your price hit!
-        </div>
-      )}
-      <div className="flex items-center gap-2 text-xs text-stone-500">
-        <span className="rounded-md bg-stone-100 px-1.5 py-0.5 capitalize">
-          {listing.seller ?? listing.sourceKey.replace(/_/g, " ")}
-        </span>
-        {listing.condition && (
-          <span className="rounded-md bg-stone-100 px-1.5 py-0.5 capitalize">{listing.condition}</span>
-        )}
-        <span className="ml-auto text-[11px] text-stone-400">{timeAgo(alert.createdAt)}</span>
-      </div>
-      {showItem && <div className="text-[11px] text-stone-400">for: {item.title}</div>}
-      <h3 className={`line-clamp-2 font-medium leading-snug text-stone-900 ${hero ? "text-lg" : "text-sm"}`}>
-        {listing.title}
-      </h3>
-      <div className="flex items-center justify-between gap-2">
-        <span className={`font-bold text-stone-900 ${hero ? "text-4xl" : "text-2xl"}`}>
-          ${listing.price.toFixed(2)}
-        </span>
-        {tier && <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${tier.badge}`}>{tier.label}</span>}
-      </div>
-      {stats && <PriceBar price={listing.price} stats={stats} />}
-      <p className="line-clamp-2 text-xs text-stone-500">{alert.reason}</p>
-      <a
-        href={listing.url}
-        target="_blank"
-        rel="noreferrer"
-        className={`mt-auto inline-flex w-full items-center justify-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-white shadow-sm transition ${
-          isStrike ? "bg-amber-500 hover:bg-amber-400" : "bg-emerald-600 hover:bg-emerald-500"
-        }`}
-      >
-        {isStrike ? "Claim it →" : "View listing →"}
-      </a>
-    </div>
-  );
+  const pct = alert.dealScore ? Math.round(alert.dealScore * 100) : 0;
+  const store = listing.seller ?? listing.sourceKey.replace(/_/g, " ");
+  const meta = [store, listing.condition].filter(Boolean).join(" · ");
 
   return (
     <article
-      className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${tier?.card ?? "border-stone-200"} ${
-        hero ? "flex flex-col sm:flex-row ring-1 ring-emerald-300" : "flex flex-col"
+      className={`group flex flex-col overflow-hidden rounded-sm border bg-surface transition duration-150 hover:-translate-y-[3px] ${
+        isStrike ? "border-gold/60 hover:border-gold" : "border-bone/12 hover:border-bone/35"
       }`}
     >
-      {image}
-      {body}
+      <div className="relative flex aspect-[4/3] items-center justify-center bg-bone">
+        {listing.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-contain p-4" loading="lazy" />
+        ) : (
+          <SnagMark className="h-10 w-10 text-ink/20" />
+        )}
+        {isStrike ? (
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-sm bg-gold px-2.5 py-1 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-gold-ink">
+            <SnagMark className="h-3 w-3 text-gold-ink" /> Strike hit
+          </span>
+        ) : (
+          pct > 0 && (
+            <span className="absolute left-3 top-3 rounded-sm bg-live px-2.5 py-1 font-display text-[13px] font-extrabold tracking-[0.01em] text-live-ink">
+              −{pct}%
+            </span>
+          )
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-[11px] p-[18px] pb-5">
+        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-bone/40">
+          {meta || "listing"}
+        </span>
+        {showItem && <span className="-mt-1.5 text-[11px] text-bone/35">for: {item.title}</span>}
+        <p className="line-clamp-2 min-h-[38px] font-sans text-[13px] leading-[1.45] text-bone/62">{listing.title}</p>
+
+        <div className="flex items-baseline gap-2.5">
+          <span className={`font-display text-[40px] font-extrabold leading-[0.85] tracking-[-0.03em] ${isStrike ? "text-gold" : "text-bone"}`}>
+            ${listing.price.toFixed(0)}
+          </span>
+          {alert.referencePrice && alert.referencePrice > listing.price && (
+            <span className="font-sans text-[13px] text-bone/40">
+              typical <s>${alert.referencePrice.toFixed(0)}</s>
+            </span>
+          )}
+        </div>
+
+        {stats && <PositionBar price={listing.price} stats={stats} />}
+
+        <p className="flex-1 font-sans text-[12.5px] leading-[1.5] text-bone/60">{alert.reason}</p>
+        <div className="flex items-center justify-between">
+          <span className="font-sans text-[11px] text-bone/35">{timeAgo(alert.createdAt)}</span>
+        </div>
+
+        <a
+          href={listing.url}
+          target="_blank"
+          rel="noreferrer"
+          className={`flex h-[46px] items-center justify-center rounded-sm font-sans text-sm font-bold tracking-[0.02em] transition ${
+            isStrike ? "bg-gold text-gold-ink hover:bg-gold-light" : "bg-bone text-ink hover:bg-live"
+          }`}
+        >
+          {isStrike ? "Claim it →" : "View listing →"}
+        </a>
+      </div>
     </article>
   );
 }

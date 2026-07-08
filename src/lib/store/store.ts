@@ -1,6 +1,6 @@
 import type { PendingAlert } from "../notify";
 import type { Store, WatchSummary } from "../watch";
-import type { AlertKind, Category, Listing, WatchlistItem } from "../types";
+import type { AlertKind, Category, ItemAttributes, Listing, WatchlistItem } from "../types";
 
 export interface StoredAlert {
   id: string;
@@ -25,6 +25,7 @@ export interface NewWatchItem {
   category: Category;
   query: string;
   maxPrice?: number;
+  attributes?: ItemAttributes; // structured spec (colorway/size/gender) for display + refinement
 }
 
 // Everything the app (server actions + page) needs from a backend. Extends the
