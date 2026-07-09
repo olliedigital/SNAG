@@ -53,7 +53,15 @@ export function dealHeat(price: number, createdAt: number, pct: number, stats?: 
   else if (rank && count > rank) rankStr = `${count - rank} listed higher`;
   else rankStr = `${count} tracked`;
 
-  return { count, rank, isFloor, minutes, fresh, level, levelLabel, chip, scarcity: `${rankStr} · ${minutes}m ago` };
+  return { count, rank, isFloor, minutes, fresh, level, levelLabel, chip, scarcity: `${rankStr} · ${fmtAgo(minutes)}` };
+}
+
+// Roll minutes up to m/h/d so old deals read "5d ago", not "6975m ago".
+function fmtAgo(min: number): string {
+  if (min < 60) return `${min}m ago`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
 }
 
 export function flames(level: number): string {
