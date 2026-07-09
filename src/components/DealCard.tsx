@@ -1,13 +1,6 @@
 import type { Deal, PriceStats } from "@/lib/store";
+import { dealHeat, flames } from "@/lib/heat";
 import { SnagMark } from "@/components/SnagMark";
-
-function timeAgo(ts: number): string {
-  const m = Math.max(1, Math.round((Date.now() - ts) / 60000));
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.round(h / 24)}d ago`;
-}
 
 const clamp = (n: number) => Math.max(2, Math.min(98, n));
 
@@ -39,6 +32,7 @@ export function DealCard({ deal, stats, showItem = false }: { deal: Deal; stats?
   const pct = alert.dealScore ? Math.round(alert.dealScore * 100) : 0;
   const store = listing.seller ?? listing.sourceKey.replace(/_/g, " ");
   const meta = [store, listing.condition].filter(Boolean).join(" · ");
+  const heat = dealHeat(listing.price, alert.createdAt, pct, stats);
 
   return (
     <article
@@ -64,12 +58,19 @@ export function DealCard({ deal, stats, showItem = false }: { deal: Deal; stats?
             </span>
           )
         )}
+        {heat.chip && (
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-sm bg-ink/85 px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-[0.08em] text-bone backdrop-blur-sm">
+            <span
+              className="h-1.5 w-1.5 rounded-full animate-snagpulse"
+              style={{ background: heat.chip.tone === "gold" ? "#f0c94a" : "#22c55e" }}
+            />
+            {heat.chip.text}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-[11px] p-[18px] pb-5">
-        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-bone/40">
-          {meta || "listing"}
-        </span>
+        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-bone/40">{meta || "listing"}</span>
         {showItem && <span className="-mt-1.5 text-[11px] text-bone/35">for: {item.title}</span>}
         <p className="line-clamp-2 min-h-[38px] font-sans text-[13px] leading-[1.45] text-bone/62">{listing.title}</p>
 
@@ -87,8 +88,14 @@ export function DealCard({ deal, stats, showItem = false }: { deal: Deal; stats?
         {stats && <PositionBar price={listing.price} stats={stats} />}
 
         <p className="flex-1 font-sans text-[12.5px] leading-[1.5] text-bone/60">{alert.reason}</p>
-        <div className="flex items-center justify-between">
-          <span className="font-sans text-[11px] text-bone/35">{timeAgo(alert.createdAt)}</span>
+
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-sans text-[11px] text-bone/40">{heat.scarcity}</span>
+          {heat.level >= 2 && (
+            <span className={`whitespace-nowrap font-sans text-[11px] font-bold ${isStrike ? "text-gold" : "text-live"}`}>
+              {flames(heat.level)} {heat.levelLabel}
+            </span>
+          )}
         </div>
 
         <a

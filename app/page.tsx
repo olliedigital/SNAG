@@ -220,7 +220,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
           </div>
         </header>
 
-        {snagged && <GoldSnag deal={snagged} />}
+        {snagged && <GoldSnag deal={snagged} stats={priceStats[snagged.item.id]} />}
 
         {/* 01 — watchlist */}
         <section className="flex flex-col gap-6">
@@ -337,7 +337,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
                 grouped.map((g) => (
                   <div key={g.item.id} className="flex flex-col gap-[18px]">
                     <div className="flex flex-wrap items-baseline justify-between gap-3">
-                      <h3 className="font-display text-[22px] font-extrabold uppercase tracking-[-0.01em]">{g.item.title}</h3>
+                      <div className="flex flex-wrap items-baseline gap-3">
+                        <h3 className="font-display text-[22px] font-extrabold uppercase tracking-[-0.01em]">{g.item.title}</h3>
+                        {priceStats[g.item.id] && (
+                          <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-bone/40">
+                            {priceStats[g.item.id].count} listings · {g.deals.length} under market
+                          </span>
+                        )}
+                      </div>
                       {market[g.item.id] && <MarketChips offers={market[g.item.id]} />}
                     </div>
                     <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fill,minmax(290px,1fr))]">

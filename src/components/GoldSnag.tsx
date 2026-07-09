@@ -1,4 +1,5 @@
-import type { Deal } from "@/lib/store";
+import type { Deal, PriceStats } from "@/lib/store";
+import { dealHeat } from "@/lib/heat";
 import { SnagMark } from "@/components/SnagMark";
 
 function timeAgo(ts: number): string {
@@ -12,11 +13,13 @@ function timeAgo(ts: number): string {
 // The win. Shown when a listing lands at or under the user's strike price —
 // gold gradient, claim CTA. gold-ink is rgb(26,20,5), so /opacity gives the
 // design's brown text tints.
-export function GoldSnag({ deal }: { deal: Deal }) {
+export function GoldSnag({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
   const { alert, listing, item } = deal;
   const strike = item.maxPrice;
   const under = strike ? Math.max(0, strike - listing.price) : 0;
   const store = listing.seller ?? listing.sourceKey.replace(/_/g, " ");
+  const pct = alert.dealScore ? Math.round(alert.dealScore * 100) : 0;
+  const heat = dealHeat(listing.price, alert.createdAt, pct, stats);
 
   return (
     <div className="relative overflow-hidden rounded-sm bg-[radial-gradient(120%_140%_at_15%_0%,#fbe9a8_0%,#f0c94a_42%,#d69e1a_100%)] text-gold-ink">
@@ -51,6 +54,11 @@ export function GoldSnag({ deal }: { deal: Deal }) {
               </span>
             </div>
           </div>
+
+          <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold uppercase tracking-[0.1em] text-gold-ink/65">
+            <span className="h-1.5 w-1.5 animate-snagpulse rounded-full bg-gold-ink" />
+            {heat.count >= 2 ? `Cheapest of ${heat.count} · ` : ""}Yours if you claim it first
+          </span>
 
           <a
             href={listing.url}

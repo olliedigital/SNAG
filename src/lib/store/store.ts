@@ -59,6 +59,7 @@ export interface PriceStats {
   max: number;
   median: number;
   count: number;
+  prices: number[]; // every tracked price, sorted ascending — drives rank/scarcity
 }
 
 export function computePriceStats(pricesByItem: Record<string, number[]>): Record<string, PriceStats> {
@@ -72,6 +73,7 @@ export function computePriceStats(pricesByItem: Record<string, number[]>): Recor
       max: s[s.length - 1],
       median: s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2,
       count: s.length,
+      prices: s,
     };
   }
   return out;

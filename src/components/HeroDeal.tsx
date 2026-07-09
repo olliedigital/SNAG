@@ -1,4 +1,5 @@
 import type { Deal, PriceStats } from "@/lib/store";
+import { dealHeat, flames } from "@/lib/heat";
 import { SnagMark } from "@/components/SnagMark";
 
 // The single best deal on the board — a wide editorial split: image plate on
@@ -9,6 +10,7 @@ export function HeroDeal({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
   const store = listing.seller ?? listing.sourceKey.replace(/_/g, " ");
   const storeCond = [store, listing.condition].filter(Boolean).join(" · ");
   const typical = alert.referencePrice ?? stats?.median;
+  const heat = dealHeat(listing.price, alert.createdAt, pct, stats);
 
   return (
     <div className="relative flex flex-wrap overflow-hidden rounded-sm border border-bone/12 bg-surface">
@@ -47,6 +49,18 @@ export function HeroDeal({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
           </span>
         </div>
         <p className="max-w-[440px] font-sans text-[14.5px] leading-[1.5] text-bone/70">{alert.reason}</p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-bone/55">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 animate-snagpulse rounded-full bg-live" />
+            {heat.scarcity}
+          </span>
+          {heat.level >= 2 && (
+            <span className="text-live">
+              {flames(heat.level)} {heat.levelLabel}
+            </span>
+          )}
+          <span className="text-bone/40">First to claim wins</span>
+        </div>
         <a
           href={listing.url}
           target="_blank"
