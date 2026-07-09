@@ -26,6 +26,8 @@ function PositionBar({ price, stats }: { price: number; stats: PriceStats }) {
   );
 }
 
+// The whole card is the link — tap anywhere to open the listing. The CTA at the
+// bottom is a visual affordance, not a separate (illegal nested) link.
 export function DealCard({ deal, stats, showItem = false }: { deal: Deal; stats?: PriceStats; showItem?: boolean }) {
   const { alert, listing, item } = deal;
   const isStrike = alert.basis === "max_price";
@@ -35,8 +37,11 @@ export function DealCard({ deal, stats, showItem = false }: { deal: Deal; stats?
   const heat = dealHeat(listing.price, alert.createdAt, pct, stats);
 
   return (
-    <article
-      className={`group flex flex-col overflow-hidden rounded-sm border bg-surface transition duration-150 hover:-translate-y-[3px] ${
+    <a
+      href={listing.url}
+      target="_blank"
+      rel="noreferrer"
+      className={`group flex cursor-pointer flex-col overflow-hidden rounded-sm border bg-surface transition duration-150 hover:-translate-y-[3px] ${
         isStrike ? "border-gold/60 hover:border-gold" : "border-bone/12 hover:border-bone/35"
       }`}
     >
@@ -98,17 +103,14 @@ export function DealCard({ deal, stats, showItem = false }: { deal: Deal; stats?
           )}
         </div>
 
-        <a
-          href={listing.url}
-          target="_blank"
-          rel="noreferrer"
+        <span
           className={`flex h-[46px] items-center justify-center rounded-sm font-sans text-sm font-bold tracking-[0.02em] transition ${
-            isStrike ? "bg-gold text-gold-ink hover:bg-gold-light" : "bg-bone text-ink hover:bg-live"
+            isStrike ? "bg-gold text-gold-ink group-hover:bg-gold-light" : "bg-bone text-ink group-hover:bg-live"
           }`}
         >
           {isStrike ? "Claim it →" : "View listing →"}
-        </a>
+        </span>
       </div>
-    </article>
+    </a>
   );
 }

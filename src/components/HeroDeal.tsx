@@ -3,7 +3,7 @@ import { dealHeat, flames } from "@/lib/heat";
 import { SnagMark } from "@/components/SnagMark";
 
 // The single best deal on the board — a wide editorial split: image plate on
-// the left, the pitch on the right.
+// the left, the pitch on the right. The whole block links to the listing.
 export function HeroDeal({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
   const { alert, listing, item } = deal;
   const pct = alert.dealScore ? Math.round(alert.dealScore * 100) : 0;
@@ -13,7 +13,12 @@ export function HeroDeal({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
   const heat = dealHeat(listing.price, alert.createdAt, pct, stats);
 
   return (
-    <div className="relative flex flex-wrap overflow-hidden rounded-sm border border-bone/12 bg-surface">
+    <a
+      href={listing.url}
+      target="_blank"
+      rel="noreferrer"
+      className="group relative flex cursor-pointer flex-wrap overflow-hidden rounded-sm border border-bone/12 bg-surface transition hover:border-bone/30"
+    >
       <div className="relative flex min-h-[300px] min-w-[280px] flex-1 items-center justify-center bg-bone">
         {listing.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -61,15 +66,10 @@ export function HeroDeal({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
           )}
           <span className="text-bone/40">First to claim wins</span>
         </div>
-        <a
-          href={listing.url}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-1.5 flex h-[52px] items-center self-start rounded-sm bg-bone px-[30px] font-sans text-[15px] font-bold tracking-[0.02em] text-ink transition hover:bg-live"
-        >
+        <span className="mt-1.5 flex h-[52px] items-center self-start rounded-sm bg-bone px-[30px] font-sans text-[15px] font-bold tracking-[0.02em] text-ink transition group-hover:bg-live">
           Snag it →
-        </a>
+        </span>
       </div>
-    </div>
+    </a>
   );
 }

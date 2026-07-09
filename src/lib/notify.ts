@@ -9,6 +9,7 @@ export interface PendingAlert {
   condition?: string;
   reason: string;
   dealScore?: number;
+  basis?: string; // "max_price" => a strike win (SNAGGED)
 }
 
 const RESEND_URL = "https://api.resend.com/emails";
@@ -21,26 +22,39 @@ export async function sendDealAlerts(pending: PendingAlert[]): Promise<boolean> 
   const rows = pending
     .map((p) => {
       const pct = p.dealScore ? ` · ${Math.round(p.dealScore * 100)}% under` : "";
+      const isStrike = p.basis === "max_price";
+      // The whole row is wrapped by an anchor-styled button too, but the primary
+      // tap target is the big CTA — one click from the phone to the listing.
+      const tag = isStrike
+        ? `<div style="display:inline-block;background:#f0c94a;color:#1a1405;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin-bottom:6px;">🎯 Snagged — your strike hit</div><br>`
+        : "";
+      const btnBg = isStrike ? "#f0c94a" : "#34d399";
+      const btnColor = isStrike ? "#1a1405" : "#0a0a0a";
+      const btnLabel = isStrike ? "Claim it →" : "View listing →";
       return `<tr>
-        <td style="padding:12px 16px;border-bottom:1px solid #262626;">
+        <td style="padding:14px 16px;border-bottom:1px solid #262626;">
+          ${tag}
           <div style="color:#a3a3a3;font-size:12px;margin-bottom:2px;">${escapeHtml(p.itemTitle)}</div>
-          <a href="${p.url}" style="color:#f5f5f5;font-weight:600;text-decoration:none;">${escapeHtml(p.listingTitle)}</a>
+          <a href="${p.url}" style="color:#f5f5f5;font-weight:600;text-decoration:none;font-size:15px;">${escapeHtml(p.listingTitle)}</a>
           <div style="margin-top:6px;">
-            <span style="color:#34d399;font-weight:700;">$${p.price.toFixed(2)}</span>
+            <span style="color:${isStrike ? "#f0c94a" : "#34d399"};font-weight:700;font-size:16px;">$${p.price.toFixed(2)}</span>
             <span style="color:#a3a3a3;font-size:12px;"> ${p.condition ? `· ${escapeHtml(p.condition)}` : ""}${pct}</span>
           </div>
           <div style="color:#a3a3a3;font-size:12px;margin-top:4px;">${escapeHtml(p.reason)}</div>
+          <a href="${p.url}" style="display:inline-block;margin-top:12px;padding:10px 20px;border-radius:8px;background:${btnBg};color:${btnColor};font-weight:700;font-size:14px;text-decoration:none;">${btnLabel}</a>
         </td>
       </tr>`;
     })
     .join("");
 
+  const strikes = pending.filter((p) => p.basis === "max_price").length;
+  const heading = strikes > 0 ? `${strikes} strike${strikes > 1 ? "s" : ""} hit + ${pending.length - strikes} more deal${pending.length - strikes === 1 ? "" : "s"} 🎯` : `${pending.length} new deal${pending.length > 1 ? "s" : ""} on your watchlist 👟`;
   const html = `
   <div style="background:#0a0a0a;padding:24px;font-family:ui-sans-serif,system-ui,sans-serif;">
     <h1 style="color:#f5f5f5;font-size:20px;margin:0 0 4px;">SNAG<span style="color:#34d399;">.</span></h1>
-    <p style="color:#a3a3a3;font-size:13px;margin:0 0 16px;">${pending.length} new deal${pending.length > 1 ? "s" : ""} on your watchlist 👟</p>
+    <p style="color:#a3a3a3;font-size:13px;margin:0 0 16px;">${heading}</p>
     <table style="width:100%;border-collapse:collapse;background:#171717;border-radius:12px;">${rows}</table>
-    <p style="color:#525252;font-size:11px;margin-top:16px;">You're getting this because SNAG found listings below market for items you watch.</p>
+    <p style="color:#525252;font-size:11px;margin-top:16px;">You're getting this because SNAG found listings below market for items you watch. Tap any deal to go straight to the listing.</p>
   </div>`;
 
   try {
@@ -52,7 +66,10 @@ export async function sendDealAlerts(pending: PendingAlert[]): Promise<boolean> 
         // set SNAG_EMAIL_FROM to an address on a verified domain to send anywhere.
         from: process.env.SNAG_EMAIL_FROM?.trim() || "SNAG <onboarding@resend.dev>",
         to: [to],
-        subject: `SNAG: ${pending.length} new deal${pending.length > 1 ? "s" : ""} found 👟`,
+        subject:
+          strikes > 0
+            ? `SNAG: 🎯 your price hit${strikes > 1 ? ` on ${strikes} pairs` : ""}!`
+            : `SNAG: ${pending.length} new deal${pending.length > 1 ? "s" : ""} found 👟`,
         html,
       }),
     });

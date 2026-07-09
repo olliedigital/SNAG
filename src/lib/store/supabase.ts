@@ -197,7 +197,7 @@ export class SupabaseStore implements SnagStore {
   async getPendingAlerts(): Promise<PendingAlert[]> {
     const { data } = await this.sb
       .from("alerts")
-      .select("id, reason, deal_score, listing:listings(title,url,price,condition), item:watchlist_items(title)")
+      .select("id, reason, deal_score, basis, listing:listings(title,url,price,condition), item:watchlist_items(title)")
       .eq("status", "pending")
       .order("deal_score", { ascending: false, nullsFirst: false })
       .limit(20);
@@ -214,6 +214,7 @@ export class SupabaseStore implements SnagStore {
         condition: row.listing.condition ?? undefined,
         reason: row.reason,
         dealScore: row.deal_score != null ? Number(row.deal_score) : undefined,
+        basis: row.basis ?? undefined,
       });
     }
     return out;
@@ -302,6 +303,7 @@ interface PendingAlertRow {
   id: string;
   reason: string;
   deal_score?: number | string | null;
+  basis?: string | null;
   listing?: { title: string; url: string; price: number | string; condition?: string | null } | null;
   item?: { title: string } | null;
 }

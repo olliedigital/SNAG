@@ -11,8 +11,8 @@ function timeAgo(ts: number): string {
 }
 
 // The win. Shown when a listing lands at or under the user's strike price —
-// gold gradient, claim CTA. gold-ink is rgb(26,20,5), so /opacity gives the
-// design's brown text tints.
+// gold gradient, and the whole banner links straight to the listing. gold-ink
+// is rgb(26,20,5), so /opacity gives the design's brown text tints.
 export function GoldSnag({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
   const { alert, listing, item } = deal;
   const strike = item.maxPrice;
@@ -22,7 +22,12 @@ export function GoldSnag({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
   const heat = dealHeat(listing.price, alert.createdAt, pct, stats);
 
   return (
-    <div className="relative overflow-hidden rounded-sm bg-[radial-gradient(120%_140%_at_15%_0%,#fbe9a8_0%,#f0c94a_42%,#d69e1a_100%)] text-gold-ink">
+    <a
+      href={listing.url}
+      target="_blank"
+      rel="noreferrer"
+      className="group relative block cursor-pointer overflow-hidden rounded-sm bg-[radial-gradient(120%_140%_at_15%_0%,#fbe9a8_0%,#f0c94a_42%,#d69e1a_100%)] text-gold-ink transition hover:brightness-[1.03]"
+    >
       <div className="pointer-events-none absolute right-0 top-0 h-full w-[52%] bg-gradient-to-r from-transparent to-white/28" />
       <div className="relative flex flex-wrap items-center gap-9 p-8 sm:px-10 sm:py-9">
         <div className="flex min-w-[280px] flex-[1.4] flex-col gap-4">
@@ -60,14 +65,9 @@ export function GoldSnag({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
             {heat.count >= 2 ? `Cheapest of ${heat.count} · ` : ""}Yours if you claim it first
           </span>
 
-          <a
-            href={listing.url}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-1 flex h-[54px] items-center self-start rounded-sm bg-gold-ink px-[34px] font-sans text-[15px] font-bold tracking-[0.06em] text-gold transition hover:bg-black"
-          >
+          <span className="mt-1 flex h-[54px] items-center self-start rounded-sm bg-gold-ink px-[34px] font-sans text-[15px] font-bold tracking-[0.06em] text-gold transition group-hover:bg-black">
             Claim it now →
-          </a>
+          </span>
         </div>
 
         <div className="flex h-[190px] w-[190px] flex-none items-center justify-center overflow-hidden rounded-sm bg-white shadow-[0_20px_50px_rgba(26,20,5,.28)]">
@@ -79,6 +79,6 @@ export function GoldSnag({ deal, stats }: { deal: Deal; stats?: PriceStats }) {
           )}
         </div>
       </div>
-    </div>
+    </a>
   );
 }
