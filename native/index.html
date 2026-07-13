@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>SNAG</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        height: 100%;
+        background: #0b0b0d;
+        color: #f2f0eb;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 32px;
+        text-align: center;
+      }
+      .mark { filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.45)); }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+      .dot { animation: pulse 1.6s infinite; }
+      .word { font-weight: 800; font-size: 30px; letter-spacing: -0.01em; }
+      .msg { font-size: 13px; color: rgba(242, 240, 235, 0.5); letter-spacing: 0.02em; }
+      .retry {
+        margin-top: 8px; padding: 12px 24px; border-radius: 4px;
+        background: #f2f0eb; color: #0b0b0d; font-weight: 700; font-size: 14px;
+        border: none; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Shown only if the live site can't be reached (offline / server down).
+         When online, Capacitor's server.url loads snag-eta.vercel.app instead. -->
+    <div class="wrap">
+      <svg class="mark" viewBox="0 0 32 32" width="44" height="44" fill="none">
+        <path d="M21 9 V20 a5.5 5.5 0 1 1 -5.5 -5.5" stroke="#22c55e" stroke-width="3.2" stroke-linecap="round" />
+        <circle class="dot" cx="21" cy="9" r="2.7" fill="#22c55e" />
+      </svg>
+      <div class="word">SNAG</div>
+      <div class="msg">Reconnecting to the hunt…</div>
+      <button class="retry" onclick="location.reload()">Retry</button>
+    </div>
+  </body>
+</html>

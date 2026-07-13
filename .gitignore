@@ -14,3 +14,13 @@ next-env.d.ts
 .env
 .env.local
 .env*.local
+
+# iOS / Capacitor build artifacts (the ios/ project itself may be committed,
+# but these are generated per-machine)
+ios/App/Pods/
+ios/App/App/public/
+ios/App/build/
+ios/DerivedData/
+DerivedData/
+*.xcuserstate
+xcuserdata/
