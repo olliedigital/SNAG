@@ -177,17 +177,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
       <Ticker items={tickerItems} />
 
       {/* nav */}
-      <nav className="mx-auto flex max-w-[1200px] items-center justify-between px-7 py-[22px]">
-        <div className="flex items-center gap-2.5">
+      <nav className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-5 py-[22px] sm:px-7">
+        <div className="flex shrink-0 items-center gap-2.5">
           <SnagMark className="h-8 w-8 text-live" pulse glow />
           <span className="font-display text-[26px] font-extrabold leading-none tracking-[-0.01em]">SNAG</span>
         </div>
-        <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-bone/50">
-          Hunting · {lastSnag ? `last snag ${shortAgo(lastSnag)}` : "sweeps every hour"}
+        <span className="flex items-center gap-2 font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-bone/50">
+          <span className="h-1.5 w-1.5 shrink-0 animate-snagpulse rounded-full bg-live" />
+          Hunting
+          <span className="hidden sm:inline">· {lastSnag ? `last snag ${shortAgo(lastSnag)}` : "sweeps every hour"}</span>
         </span>
       </nav>
 
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-20 px-7 pb-24">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-20 px-5 pb-24 sm:px-7">
         {/* hero / headline */}
         <header className="flex flex-col gap-9 pt-5">
           <div className="flex flex-col gap-[18px]">
