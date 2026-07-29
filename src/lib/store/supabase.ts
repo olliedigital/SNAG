@@ -257,6 +257,23 @@ export class SupabaseStore implements SnagStore {
       .in("id", ids);
   }
 
+  async saveDeviceToken(token: string, platform = "ios"): Promise<void> {
+    if (!token) return;
+    await this.sb
+      .from("device_tokens")
+      .upsert({ token, platform, last_seen_at: new Date().toISOString() }, { onConflict: "token" });
+  }
+
+  async getDeviceTokens(): Promise<string[]> {
+    const { data } = await this.sb.from("device_tokens").select("token");
+    return ((data ?? []) as { token: string }[]).map((r) => r.token).filter(Boolean);
+  }
+
+  async removeDeviceToken(token: string): Promise<void> {
+    if (!token) return;
+    await this.sb.from("device_tokens").delete().eq("token", token);
+  }
+
   async ensureSeeded(): Promise<void> {
     const { count } = await this.sb.from("watchlist_items").select("id", { count: "exact", head: true });
     if ((count ?? 0) > 0) return;

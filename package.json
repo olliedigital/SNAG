@@ -24,6 +24,7 @@
     "@capacitor/status-bar": "^8.0.2",
     "@supabase/supabase-js": "^2.45.0",
     "ai": "^5.0.209",
+    "jose": "^6.2.4",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

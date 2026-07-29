@@ -139,6 +139,17 @@ export class MemoryStore implements SnagStore {
 
   async markAlertsSent(): Promise<void> {}
 
+  private deviceTokens = new Set<string>();
+  async saveDeviceToken(token: string): Promise<void> {
+    if (token) this.deviceTokens.add(token);
+  }
+  async getDeviceTokens(): Promise<string[]> {
+    return [...this.deviceTokens];
+  }
+  async removeDeviceToken(token: string): Promise<void> {
+    this.deviceTokens.delete(token);
+  }
+
   async ensureSeeded(): Promise<void> {
     if (this.seeded) return;
     this.seeded = true;
