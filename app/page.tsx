@@ -367,10 +367,20 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
           )}
         </section>
 
-        <footer className="border-t border-bone/10 pt-6 text-center font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-bone/30">
-          {ebay
-            ? `SNAG·Agent · Live from eBay${usingScout() ? " + web scout" : ""} · Verified listings only`
-            : "SNAG·Agent · Demo mode · Add your eBay key for live listings"}
+        <footer className="flex flex-col items-center gap-2 border-t border-bone/10 pt-6 text-center font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-bone/30">
+          <div>
+            {ebay
+              ? `SNAG·Agent · Live from eBay${usingScout() ? " + web scout" : ""} · Verified listings only`
+              : "SNAG·Agent · Demo mode · Add your eBay key for live listings"}
+          </div>
+          <div className="flex gap-4">
+            <a href="/privacy" className="transition hover:text-bone/60">
+              Privacy
+            </a>
+            <a href="/support" className="transition hover:text-bone/60">
+              Support
+            </a>
+          </div>
         </footer>
       </div>
     </>
