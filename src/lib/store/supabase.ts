@@ -9,6 +9,7 @@ import {
   type Deal,
   type MarketOffer,
   type NewWatchItem,
+  type PricePoint,
   type PriceStats,
   type SnagStore,
   type StoredAlert,
@@ -255,6 +256,34 @@ export class SupabaseStore implements SnagStore {
       .from("alerts")
       .update({ status: "sent", notified_at: new Date().toISOString() })
       .in("id", ids);
+  }
+
+  async getPriceTrends(): Promise<Record<string, PricePoint[]>> {
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { data } = await this.sb
+      .from("price_points")
+      .select("watchlist_item_id, price, captured_at")
+      .gte("captured_at", since)
+      .order("captured_at", { ascending: true });
+
+    // Collapse to the best (min) price per shoe per day, so the sparkline shows
+    // how the market for that pair has moved over the last month.
+    const byItemDay: Record<string, Record<string, number>> = {};
+    for (const r of (data ?? []) as { watchlist_item_id: string; price: number | string; captured_at: string }[]) {
+      const price = Number(r.price);
+      if (!Number.isFinite(price) || price <= 0 || !r.captured_at) continue;
+      const day = r.captured_at.slice(0, 10); // YYYY-MM-DD
+      const m = (byItemDay[r.watchlist_item_id] ??= {});
+      if (m[day] == null || price < m[day]) m[day] = price;
+    }
+
+    const out: Record<string, PricePoint[]> = {};
+    for (const [itemId, days] of Object.entries(byItemDay)) {
+      out[itemId] = Object.entries(days)
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([d, p]) => ({ t: Date.parse(d), price: p }));
+    }
+    return out;
   }
 
   async saveDeviceToken(token: string, platform = "ios"): Promise<void> {

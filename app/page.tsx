@@ -5,7 +5,9 @@ import { DealCard } from "@/components/DealCard";
 import { DealFilters } from "@/components/DealFilters";
 import { GoldSnag } from "@/components/GoldSnag";
 import { HeroDeal } from "@/components/HeroDeal";
+import { HowItWorks } from "@/components/HowItWorks";
 import { SnagMark } from "@/components/SnagMark";
+import { Sparkline } from "@/components/Sparkline";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Ticker } from "@/components/Ticker";
 import { WatchlistForm } from "@/components/WatchlistForm";
@@ -110,11 +112,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
 
   const store = getStore();
   await store.ensureSeeded();
-  const [items, allDeals, priceStats, market] = await Promise.all([
+  const [items, allDeals, priceStats, market, priceTrends] = await Promise.all([
     store.getItems(),
     store.getDeals(),
     store.getItemPriceStats(),
     store.getMarketSnapshot(),
+    store.getPriceTrends(),
   ]);
   const ebay = usingEbay();
 
@@ -231,6 +234,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
             title="Watchlist"
             trailing={<span className="font-sans text-[13px] text-bone/50">Set your strike. The agent does the rest.</span>}
           />
+          <HowItWorks />
           <WatchlistForm />
 
           {items.length > 0 ? (
@@ -266,6 +270,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pag
                           {m.label}
                         </span>
                       </div>
+                      {(priceTrends[it.id]?.length ?? 0) >= 3 && (
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-bone/30">
+                            Market
+                          </span>
+                          <Sparkline points={priceTrends[it.id]} />
+                        </div>
+                      )}
                     </div>
 
                     <form action={setStrike} className="flex flex-none flex-col items-end gap-px">

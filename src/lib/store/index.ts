@@ -23,4 +23,4 @@ export function isLiveBackend(): boolean {
   );
 }
 
-export type { Deal, StoredAlert, SnagStore, NewWatchItem, PriceStats, MarketOffer } from "./store";
+export type { Deal, StoredAlert, SnagStore, NewWatchItem, PriceStats, MarketOffer, PricePoint } from "./store";

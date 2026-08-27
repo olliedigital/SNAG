@@ -46,10 +46,17 @@ export interface SnagStore extends Store {
   getItemPriceStats(): Promise<Record<string, PriceStats>>;
   // Lowest tracked price per store per item (drives the across-the-market strip).
   getMarketSnapshot(): Promise<Record<string, MarketOffer[]>>;
+  // Daily best price per shoe over time (drives the price-trend sparkline).
+  getPriceTrends(): Promise<Record<string, PricePoint[]>>;
   // Native push: device tokens registered by the iOS app.
   saveDeviceToken(token: string, platform?: string): Promise<void>;
   getDeviceTokens(): Promise<string[]>;
   removeDeviceToken(token: string): Promise<void>;
+}
+
+export interface PricePoint {
+  t: number; // epoch ms (day)
+  price: number; // best (min) price seen that day
 }
 
 export interface MarketOffer {

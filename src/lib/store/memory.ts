@@ -7,6 +7,7 @@ import {
   type Deal,
   type MarketOffer,
   type NewWatchItem,
+  type PricePoint,
   type PriceStats,
   type SnagStore,
   type StoredAlert,
@@ -133,6 +134,30 @@ export class MemoryStore implements SnagStore {
     const out: Record<string, MarketOffer[]> = {};
     for (const [itemId, byStore] of Object.entries(best)) {
       out[itemId] = [...byStore.values()].sort((a, b) => a.price - b.price).slice(0, 8);
+    }
+    return out;
+  }
+
+  async getPriceTrends(): Promise<Record<string, PricePoint[]>> {
+    // Demo backend has no timestamped history, so synthesize a plausible 14-day
+    // trend from the current spread (deterministic). Production reads real data.
+    const byItem: Record<string, number[]> = {};
+    for (const l of this.listings.values()) (byItem[l.watchlistItemId] ??= []).push(l.price);
+    const now = Date.now();
+    const out: Record<string, PricePoint[]> = {};
+    for (const [itemId, prices] of Object.entries(byItem)) {
+      const s = prices.filter((n) => n > 0).sort((a, b) => a - b);
+      if (s.length < 2) continue;
+      const min = s[0];
+      const max = s[s.length - 1];
+      const pts: PricePoint[] = [];
+      for (let d = 13; d >= 0; d--) {
+        const frac = d / 13; // 1 = 2 weeks ago, 0 = today
+        const base = min + (max - min) * (0.3 + 0.5 * frac);
+        const noise = Math.sin(d * 1.7 + itemId.length) * 0.05 * (max - min);
+        pts.push({ t: now - d * 86_400_000, price: Math.max(min, Math.round(base + noise)) });
+      }
+      out[itemId] = pts;
     }
     return out;
   }
