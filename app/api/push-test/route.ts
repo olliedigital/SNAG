@@ -9,7 +9,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  // Accept the secret via Bearer header OR a ?key= query param, so the push can
+  // be fired straight from a phone browser (handy for recording a demo).
+  const key = new URL(req.url).searchParams.get("key");
+  const authed = !secret || req.headers.get("authorization") === `Bearer ${secret}` || key === secret;
+  if (!authed) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!pushConfigured()) {
